@@ -86,6 +86,40 @@
     </div>
   </header>
 
+
+  <!-- ========== HERO SECTION ========== -->
+  <section id="explore" class="px-4 sm:px-6 lg:px-8 pt-10 pb-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="max-w-2xl">
+        <p class="text-sm text-gray-500 mb-2 flex items-center gap-1">🌿 Hello, Explorer!</p>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 leading-tight mb-4">
+          Discover Every Country<br>on Our <span class="text-green-600">Beautiful Planet</span>
+        </h2>
+        <p class="text-gray-500 mb-8 text-sm leading-relaxed">
+          Explore countries, find detailed information, compare them, and save your favorites. Your journey around the world starts here.
+        </p>
+
+        <!-- Search Box -->
+        <div class="flex gap-3 mb-8">
+          <div class="flex-1 relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+            <input
+              type="text"
+              id="searchInput"
+              aria-label="Search for a country"
+              autocomplete="off"
+              placeholder="Search for a country (e.g. India, Japan, France...)"
+              class="w-full pl-11 pr-4 py-3 rounded-full border border-gray-200 bg-white text-sm focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 transition placeholder:text-gray-400"
+            >
+          </div>
+          <button id="searchBtn" type="button" class="px-6 sm:px-8 py-3 bg-green-600 text-white rounded-full font-semibold text-sm hover:bg-green-700 active:scale-95 transition-all">
+            Search
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <script src="script.js"></script>
 </body>
 </html>

@@ -40,3 +40,24 @@ mobileMenu.addEventListener("click", (event) => {
   mobileMenuBtn.setAttribute("aria-expanded", "false");
   mobileMenuBtn.textContent = "☰";
 });
+
+
+// 3. Search Elements
+
+// Search box aur search button
+const searchInput = document.querySelector("#searchInput");
+const searchButton = document.querySelector("#searchBtn");
+
+
+// 4. Search Box ke Events
+
+// Search button click hone par filter chalana
+searchButton.addEventListener("click", () => applyFilters(true));
+
+// Search box mein Enter press karne par bhi turant filter
+searchInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    applyFilters(true);
+  }
+});
