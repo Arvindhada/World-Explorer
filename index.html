@@ -120,6 +120,76 @@
     </div>
   </section>
 
+
+  <!-- ========== MAIN CONTENT ========== -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- Stats + Sort Bar -->
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <div>
+        <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">🌍 Popular Countries</h2>
+        <p class="text-sm text-gray-500 mt-0.5" aria-live="polite">
+          Showing <span id="showingCountries" class="font-semibold text-green-600">0</span> of
+          <span id="totalCountries" class="font-semibold text-gray-700">0</span> countries
+          • <span id="favoriteCount" class="font-semibold text-red-500">0</span> favorites
+        </p>
+      </div>
+
+      <div class="flex flex-wrap gap-2.5">
+        <select id="sortFilter" class="px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-600 focus:outline-none focus:border-green-500 cursor-pointer">
+          <option value="default">Sort Countries</option>
+          <option value="az">Name: A → Z</option>
+          <option value="za">Name: Z → A</option>
+          <option value="populationHigh">Population: High → Low</option>
+          <option value="populationLow">Population: Low → High</option>
+        </select>
+
+        <select id="favoritesFilter" class="px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-600 focus:outline-none focus:border-green-500 cursor-pointer">
+          <option value="all">All Countries</option>
+          <option value="favorites">❤️ Favorites Only</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Country Cards Grid -->
+    <div id="countryContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      <p class="text-center text-gray-400 col-span-full py-16 text-sm">Countries will appear here...</p>
+    </div>
+
+    <!-- Comparison Container -->
+    <div id="comparisonContainer" class="mt-8"></div>
+  </main>
+
+
+  <!-- ========== FOOTER ========== -->
+  <footer id="footer" class="bg-white border-t border-gray-100 mt-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+
+        <!-- Footer Logo -->
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">🌍</span>
+          <div>
+            <h3 class="font-bold text-green-700">World Explorer</h3>
+            <p class="text-xs text-gray-400">One World • Endless Discoveries</p>
+          </div>
+        </div>
+
+        <!-- Footer Nav -->
+        <nav class="flex flex-wrap justify-center gap-6 text-sm text-gray-500">
+          <a href="#" class="hover:text-green-600 transition">Home</a>
+          <a href="#explore" class="hover:text-green-600 transition">Explore</a>
+          <a href="#favorites-section" class="hover:text-green-600 transition">Favorites</a>
+          <a href="#comparisonContainer" class="hover:text-green-600 transition">Compare</a>
+          <a href="#footer" class="hover:text-green-600 transition">About</a>
+        </nav>
+
+        <!-- Copyright -->
+        <p class="text-xs text-gray-400">© <span id="year">2026</span> World Explorer</p>
+      </div>
+    </div>
+  </footer>
+
   <script src="script.js"></script>
 </body>
 </html>

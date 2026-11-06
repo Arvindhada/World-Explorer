@@ -61,3 +61,26 @@ searchInput.addEventListener("keydown", (event) => {
     applyFilters(true);
   }
 });
+
+
+// 5. Dashboard Statistics Elements
+// Total countries, screen par dikhne wali countries aur favorites ki count.
+
+const totalCountriesEl = document.querySelector("#totalCountries");
+const showingCountriesEl = document.querySelector("#showingCountries");
+const favoriteCountEl = document.querySelector("#favoriteCount");
+
+
+// 6. Sort aur Favorites dropdowns
+
+const sortFilter = document.querySelector("#sortFilter");
+const favoritesFilter = document.querySelector("#favoritesFilter");
+
+
+// 7. Footer ka year current rakho
+
+const yearEl = document.querySelector("#year");
+
+if (yearEl) {
+  yearEl.textContent = new Date().getFullYear();
+}
