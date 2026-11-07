@@ -84,3 +84,120 @@ const yearEl = document.querySelector("#year");
 if (yearEl) {
   yearEl.textContent = new Date().getFullYear();
 }
+
+
+// 8. API URL
+// Yahan se hum countries ka data API ke through laate hain.
+
+const API_URL =
+  "https://countries.dev/countries?fields=name,capital,region,population,flags";
+
+
+// 9. Country cards dikhane wala container
+
+const container = document.querySelector("#countryContainer");
+
+
+// 10. Data Store karne ke liye state
+
+// API se aane wale saare countries
+let allCountries = [];
+
+// User ke favorite countries
+let favoriteCountries = [];
+
+// Kaunsa region active hai ("all" = sab)
+let activeRegion = "all";
+
+
+// 11. Population format karna
+// Example: 1000000 = 1.0 M
+
+function formatPopulation(num) {
+  if (num >= 1_000_000_000) {
+    return (num / 1_000_000_000).toFixed(2) + " B";
+  }
+  if (num >= 1_000_000) {
+    return (num / 1_000_000).toFixed(1) + " M";
+  }
+  if (num >= 1_000) {
+    return (num / 1_000).toFixed(0) + " K";
+  }
+  return String(num);
+}
+
+
+// 12. Region normalize karna
+// API mein "Polar", "Antarctic" aur "Antarctic Ocean" jaise alag region
+// naam aate hain. Unhe ek hi naam mein laate hain.
+
+const KNOWN_REGIONS = ["Asia", "Europe", "Africa", "Americas", "Oceania"];
+
+function normalizeRegion(region) {
+  if (!region) return "Unknown";
+  return KNOWN_REGIONS.includes(region) ? region : "Antarctic";
+}
+
+
+// 13. Dashboard Statistics Update Karna
+
+function updateStatistics(shownCount) {
+  totalCountriesEl.textContent = allCountries.length;
+  showingCountriesEl.textContent = shownCount;
+  favoriteCountEl.textContent = favoriteCountries.length;
+}
+
+
+// 14. Filter chalana
+// Abhi data aane par sirf statistics update hoti hai.
+// Search aur region filter aage ke dinon mein judega.
+
+function applyFilters() {
+  updateStatistics(allCountries.length);
+}
+
+
+// 15. API se Countries ka Data Lana
+// async ka matlab function asynchronous kaam karega.
+// await API response ka wait karega.
+
+async function fetchCountries() {
+  const response = await fetch(API_URL);
+  const data = await response.json();
+
+  // API data ko apne required format mein convert karna
+  allCountries = data.map((country) => {
+    const rawPopulation = Number(country.population) || 0;
+
+    return {
+      name: String(country.name ?? "Unknown"),
+
+      // Capital missing ho to N/A (Antarctica jaise cases)
+      capital: country.capital || "N/A",
+
+      region: normalizeRegion(country.region),
+
+      // Card ke liye halka PNG flag
+      flag: country.flags?.png || country.flags?.svg || "",
+
+      // Popup ke liye sharper SVG flag
+      flagLarge: country.flags?.svg || country.flags?.png || "",
+
+      population: formatPopulation(rawPopulation),
+
+      // Sorting ke liye original numeric population
+      rawPopulation,
+    };
+  });
+
+  // Countries ko initially A-Z order mein arrange karna
+  allCountries.sort((a, b) => a.name.localeCompare(b.name));
+
+  applyFilters(true);
+}
+
+
+// 16. Project Initialize Karna
+// JavaScript load hote hi API se countries fetch karo.
+
+fetchCountries();
