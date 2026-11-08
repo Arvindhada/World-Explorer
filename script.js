@@ -157,47 +157,108 @@ function applyFilters() {
 }
 
 
-// 15. API se Countries ka Data Lana
+// 15. Loading Skeleton
+// API ka jawab aane tak grey pulsing cards dikhte hain.
+
+function skeletonHTML() {
+  return Array.from({ length: 8 })
+    .map(
+      () => `<div class="h-72 animate-pulse rounded-2xl bg-gray-200/80"></div>`
+    )
+    .join("");
+}
+
+
+// 16. API Error Dikhana
+// Internet na ho ya API fail ho to user ko Retry ka option milta hai.
+
+function showError() {
+  container.innerHTML = `
+    <div class="col-span-full flex flex-col items-center gap-3 py-16 text-center">
+      <span class="text-4xl">⚠️</span>
+      <p class="text-base font-semibold text-gray-600">Unable to load countries</p>
+      <p class="max-w-sm text-sm text-gray-400">
+        Check your internet connection and try again.
+      </p>
+      <button
+        type="button"
+        id="retryBtn"
+        class="mt-1 rounded-full bg-green-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-green-700 active:scale-95"
+      >
+        Retry
+      </button>
+    </div>
+  `;
+
+  // Retry click hone par API dobara call karna
+  const retryBtn = container.querySelector("#retryBtn");
+
+  if (retryBtn) {
+    retryBtn.addEventListener("click", fetchCountries);
+  }
+}
+
+
+// 17. API se Countries ka Data Lana
 // async ka matlab function asynchronous kaam karega.
 // await API response ka wait karega.
 
 async function fetchCountries() {
-  const response = await fetch(API_URL);
-  const data = await response.json();
+  // API load hone tak loading skeleton dikhana
+  container.innerHTML = skeletonHTML();
 
-  // API data ko apne required format mein convert karna
-  allCountries = data.map((country) => {
-    const rawPopulation = Number(country.population) || 0;
+  // API request mein error aaye to catch handle karega
+  try {
+    const response = await fetch(API_URL);
 
-    return {
-      name: String(country.name ?? "Unknown"),
+    // Check karna response successful hai ya nahi
+    if (!response.ok) {
+      throw new Error("Failed to fetch countries");
+    }
 
-      // Capital missing ho to N/A (Antarctica jaise cases)
-      capital: country.capital || "N/A",
+    const data = await response.json();
 
-      region: normalizeRegion(country.region),
+    // API data ko apne required format mein convert karna
+    allCountries = data.map((country) => {
+      const rawPopulation = Number(country.population) || 0;
 
-      // Card ke liye halka PNG flag
-      flag: country.flags?.png || country.flags?.svg || "",
+      return {
+        name: String(country.name ?? "Unknown"),
 
-      // Popup ke liye sharper SVG flag
-      flagLarge: country.flags?.svg || country.flags?.png || "",
+        // Capital missing ho to N/A (Antarctica jaise cases)
+        capital: country.capital || "N/A",
 
-      population: formatPopulation(rawPopulation),
+        region: normalizeRegion(country.region),
 
-      // Sorting ke liye original numeric population
-      rawPopulation,
-    };
-  });
+        // Card ke liye halka PNG flag
+        flag: country.flags?.png || country.flags?.svg || "",
 
-  // Countries ko initially A-Z order mein arrange karna
-  allCountries.sort((a, b) => a.name.localeCompare(b.name));
+        // Popup ke liye sharper SVG flag
+        flagLarge: country.flags?.svg || country.flags?.png || "",
 
-  applyFilters(true);
+        population: formatPopulation(rawPopulation),
+
+        // Sorting ke liye original numeric population
+        rawPopulation,
+      };
+    });
+
+    // Countries ko initially A-Z order mein arrange karna
+    allCountries.sort((a, b) => a.name.localeCompare(b.name));
+
+    applyFilters(true);
+
+  } catch (error) {
+    // Developer ke liye console mein actual error
+    console.error("Error loading countries:", error);
+
+    // User ko friendly error message
+    showError();
+  }
 }
 
 
-// 16. Project Initialize Karna
+// 18. Project Initialize Karna
 // JavaScript load hote hi API se countries fetch karo.
 
 fetchCountries();
