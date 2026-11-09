@@ -139,7 +139,119 @@ function normalizeRegion(region) {
 }
 
 
-// 13. Dashboard Statistics Update Karna
+// 13. Chhota safety helper
+// API ka data innerHTML mein ja raha hai, isliye special characters
+// escape karna zaroori hai.
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => {
+    return {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    }[character];
+  });
+}
+
+
+// 14. Card ke andar ki ek info line
+
+function infoRow(label, value) {
+  return `
+    <div class="flex items-baseline justify-between gap-3">
+      <dt class="shrink-0 text-gray-400">${label}</dt>
+      <dd class="truncate text-right font-medium text-gray-700" title="${escapeHtml(value)}">${escapeHtml(value)}</dd>
+    </div>
+  `;
+}
+
+
+// 15. Ek Country Card ka HTML
+
+function cardHTML(country) {
+  const safeName = escapeHtml(country.name);
+
+  // Flag na mile to emoji fallback dikhana
+  const flagMarkup = country.flag
+    ? `<img
+         src="${escapeHtml(country.flag)}"
+         alt="Flag of ${safeName}"
+         class="h-full w-full object-cover"
+       >`
+    : `<div class="flex h-full w-full items-center justify-center text-3xl">🌐</div>`;
+
+  return `
+    <article class="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+
+      <div class="h-36 shrink-0 overflow-hidden bg-gray-100">
+        ${flagMarkup}
+      </div>
+
+      <div class="flex-1 p-4">
+        <h3 class="mb-3 line-clamp-2 text-base font-bold leading-snug text-gray-900">
+          ${safeName}
+        </h3>
+
+        <dl class="space-y-1.5 text-sm">
+          ${infoRow("Capital", country.capital)}
+          ${infoRow("Region", country.region)}
+          ${infoRow("Population", country.population)}
+        </dl>
+      </div>
+
+      <div class="flex flex-col gap-2 p-4 pt-0">
+        <button
+          type="button"
+          data-name="${safeName}"
+          class="favorite-btn w-full rounded-lg bg-gray-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 active:scale-[0.98]"
+        >
+          🤍 Add Favorite
+        </button>
+
+        <div class="flex gap-2">
+          <button
+            type="button"
+            data-name="${safeName}"
+            class="details-btn flex-1 rounded-lg bg-sky-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 active:scale-[0.98]"
+          >
+            View Details
+          </button>
+
+          <button
+            type="button"
+            data-name="${safeName}"
+            class="compare-btn flex-1 rounded-lg bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-700 ring-1 ring-inset ring-violet-200 transition hover:bg-violet-100 active:scale-[0.98]"
+          >
+            Compare
+          </button>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+
+// 16. Country Cards Render Karna
+
+function renderCards(countries) {
+  if (countries.length === 0) {
+    container.innerHTML = `
+      <p class="col-span-full py-16 text-center text-sm text-gray-400">
+        No countries found. Try a different search!
+      </p>
+    `;
+    updateStatistics(0);
+    return;
+  }
+
+  container.innerHTML = countries.map(cardHTML).join("");
+  updateStatistics(countries.length);
+}
+
+
+// 17. Dashboard Statistics Update Karna
 
 function updateStatistics(shownCount) {
   totalCountriesEl.textContent = allCountries.length;
@@ -148,16 +260,40 @@ function updateStatistics(shownCount) {
 }
 
 
-// 14. Filter chalana
-// Abhi data aane par sirf statistics update hoti hai.
+// 18. Filter chalana
+// Abhi data aane par saare countries render hote hain.
 // Search aur region filter aage ke dinon mein judega.
 
 function applyFilters() {
-  updateStatistics(allCountries.length);
+  renderCards(allCountries);
 }
 
 
-// 15. Loading Skeleton
+// 19. Country Card Buttons Handle Karna
+// Event Delegation: parent container par ek listener,
+// saare buttons usi se handle ho jaate hain.
+
+container.addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+
+  if (!button) return;
+
+  // Favorite button click hua
+  if (button.classList.contains("favorite-btn")) {
+    toggleFavorite(button.dataset.name);
+
+  // Details button click hua
+  } else if (button.classList.contains("details-btn")) {
+    openDetails(button.dataset.name);
+
+  // Compare button click hua
+  } else if (button.classList.contains("compare-btn")) {
+    toggleCompare(button.dataset.name);
+  }
+});
+
+
+// 20. Loading Skeleton
 // API ka jawab aane tak grey pulsing cards dikhte hain.
 
 function skeletonHTML() {
@@ -169,7 +305,7 @@ function skeletonHTML() {
 }
 
 
-// 16. API Error Dikhana
+// 21. API Error Dikhana
 // Internet na ho ya API fail ho to user ko Retry ka option milta hai.
 
 function showError() {
@@ -199,7 +335,7 @@ function showError() {
 }
 
 
-// 17. API se Countries ka Data Lana
+// 22. API se Countries ka Data Lana
 // async ka matlab function asynchronous kaam karega.
 // await API response ka wait karega.
 
@@ -258,7 +394,7 @@ async function fetchCountries() {
 }
 
 
-// 18. Project Initialize Karna
+// 23. Project Initialize Karna
 // JavaScript load hote hi API se countries fetch karo.
 
 fetchCountries();
