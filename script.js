@@ -237,11 +237,7 @@ function cardHTML(country) {
 
 function renderCards(countries) {
   if (countries.length === 0) {
-    container.innerHTML = `
-      <p class="col-span-full py-16 text-center text-sm text-gray-400">
-        No countries found. Try a different search!
-      </p>
-    `;
+    container.innerHTML = emptyStateHTML();
     updateStatistics(0);
     return;
   }
@@ -260,16 +256,70 @@ function updateStatistics(shownCount) {
 }
 
 
-// 18. Filter chalana
-// Abhi data aane par saare countries render hote hain.
-// Search aur region filter aage ke dinon mein judega.
+// 18. Empty State (kuch na mile to)
 
-function applyFilters() {
-  renderCards(allCountries);
+function emptyStateHTML() {
+  return `
+    <div class="col-span-full flex flex-col items-center gap-3 py-16 text-center">
+      <span class="text-4xl">🧭</span>
+      <p class="text-base font-semibold text-gray-600">No countries found</p>
+      <p class="max-w-sm text-sm text-gray-400">
+        Try a different spelling, or clear the region and favorites filters.
+      </p>
+      <button
+        type="button"
+        id="resetFiltersBtn"
+        class="mt-1 rounded-full bg-green-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-green-700 active:scale-95"
+      >
+        Reset filters
+      </button>
+    </div>
+  `;
 }
 
 
-// 19. Country Card Buttons Handle Karna
+// 19. Filter chalana
+// Search text country ke naam, capital aur region — teeno mein dhoonda jata hai.
+
+function applyFilters() {
+  const searchText = searchInput.value.trim().toLowerCase();
+  const selectedFavorite = favoritesFilter.value;
+
+  const result = allCountries.filter((country) => {
+    // Naam, capital aur region ek hi string mein jod kar search karna
+    const haystack =
+      `${country.name} ${country.capital} ${country.region}`.toLowerCase();
+
+    const matchesSearch = haystack.includes(searchText);
+    const matchesRegion =
+      activeRegion === "all" || country.region === activeRegion;
+    const matchesFavorite =
+      selectedFavorite !== "favorites" ||
+      favoriteCountries.includes(country.name);
+
+    return matchesSearch && matchesRegion && matchesFavorite;
+  });
+
+  renderCards(result);
+}
+
+
+// 20. Search Debounce
+// Har key stroke par 250 countries filter karne ki zaroorat nahi —
+// 250ms ruk kar chalate hain.
+
+let searchTimer = null;
+
+function scheduleSearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => applyFilters(true), 250);
+}
+
+// Search box mein type karte hi (debounced) search
+searchInput.addEventListener("input", scheduleSearch);
+
+
+// 21. Country Card Buttons Handle Karna
 // Event Delegation: parent container par ek listener,
 // saare buttons usi se handle ho jaate hain.
 
@@ -277,6 +327,15 @@ container.addEventListener("click", (event) => {
   const button = event.target.closest("button");
 
   if (!button) return;
+
+  // Empty state ka reset button
+  if (button.id === "resetFiltersBtn") {
+    searchInput.value = "";
+    favoritesFilter.value = "all";
+    activeRegion = "all";
+    applyFilters(true);
+    return;
+  }
 
   // Favorite button click hua
   if (button.classList.contains("favorite-btn")) {
@@ -293,7 +352,7 @@ container.addEventListener("click", (event) => {
 });
 
 
-// 20. Loading Skeleton
+// 22. Loading Skeleton
 // API ka jawab aane tak grey pulsing cards dikhte hain.
 
 function skeletonHTML() {
@@ -305,7 +364,7 @@ function skeletonHTML() {
 }
 
 
-// 21. API Error Dikhana
+// 23. API Error Dikhana
 // Internet na ho ya API fail ho to user ko Retry ka option milta hai.
 
 function showError() {
@@ -335,7 +394,7 @@ function showError() {
 }
 
 
-// 22. API se Countries ka Data Lana
+// 24. API se Countries ka Data Lana
 // async ka matlab function asynchronous kaam karega.
 // await API response ka wait karega.
 
@@ -394,7 +453,7 @@ async function fetchCountries() {
 }
 
 
-// 23. Project Initialize Karna
+// 25. Project Initialize Karna
 // JavaScript load hote hi API se countries fetch karo.
 
 fetchCountries();
