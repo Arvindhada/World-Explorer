@@ -76,6 +76,9 @@ const favoriteCountEl = document.querySelector("#favoriteCount");
 const sortFilter = document.querySelector("#sortFilter");
 const favoritesFilter = document.querySelector("#favoritesFilter");
 
+// Region filter ke pills wala wrapper
+const regionPills = document.querySelector("#regionPills");
+
 
 // 7. Footer ka year current rakho
 
@@ -278,7 +281,27 @@ function emptyStateHTML() {
 }
 
 
-// 19. Filter chalana
+// 19. Countries ko Sort Karna
+// Dropdown ki value ke hisaab se list ka order badalta hai.
+
+function sortCountries(countries) {
+  const sorted = [...countries];
+
+  if (sortFilter.value === "az") {
+    sorted.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (sortFilter.value === "za") {
+    sorted.sort((a, b) => b.name.localeCompare(a.name));
+  } else if (sortFilter.value === "populationHigh") {
+    sorted.sort((a, b) => b.rawPopulation - a.rawPopulation);
+  } else if (sortFilter.value === "populationLow") {
+    sorted.sort((a, b) => a.rawPopulation - b.rawPopulation);
+  }
+
+  return sorted;
+}
+
+
+// 20. Filter chalana
 // Search text country ke naam, capital aur region — teeno mein dhoonda jata hai.
 
 function applyFilters() {
@@ -300,11 +323,32 @@ function applyFilters() {
     return matchesSearch && matchesRegion && matchesFavorite;
   });
 
-  renderCards(result);
+  renderCards(sortCountries(result));
 }
 
 
-// 20. Search Debounce
+// 21. Region Pills ka Active State
+// Jo region select hai uske pill ko green banate hain, baaki white.
+
+function paintRegionPills() {
+  regionPills.querySelectorAll(".region-btn").forEach((button) => {
+    const isActive = button.dataset.region === activeRegion;
+
+    button.classList.toggle("bg-green-600", isActive);
+    button.classList.toggle("text-white", isActive);
+    button.classList.toggle("shadow-sm", isActive);
+
+    button.classList.toggle("bg-white", !isActive);
+    button.classList.toggle("text-gray-600", !isActive);
+    button.classList.toggle("border", !isActive);
+    button.classList.toggle("border-gray-200", !isActive);
+    button.classList.toggle("hover:border-green-400", !isActive);
+    button.classList.toggle("hover:text-green-600", !isActive);
+  });
+}
+
+
+// 22. Search Debounce
 // Har key stroke par 250 countries filter karne ki zaroorat nahi —
 // 250ms ruk kar chalate hain.
 
@@ -318,8 +362,29 @@ function scheduleSearch() {
 // Search box mein type karte hi (debounced) search
 searchInput.addEventListener("input", scheduleSearch);
 
+// Region pills — click hote hi us region ki countries dikhao
+regionPills.addEventListener("click", (event) => {
+  const button = event.target.closest(".region-btn");
 
-// 21. Country Card Buttons Handle Karna
+  if (!button) return;
+
+  activeRegion = button.dataset.region || "all";
+
+  paintRegionPills();
+  applyFilters(true);
+});
+
+// Sorting dropdown
+sortFilter.addEventListener("change", () => applyFilters(true));
+
+// Favorites dropdown
+favoritesFilter.addEventListener("change", () => applyFilters(true));
+
+// Pehli baar active pill sahi dikhe
+paintRegionPills();
+
+
+// 23. Country Card Buttons Handle Karna
 // Event Delegation: parent container par ek listener,
 // saare buttons usi se handle ho jaate hain.
 
@@ -352,7 +417,7 @@ container.addEventListener("click", (event) => {
 });
 
 
-// 22. Loading Skeleton
+// 24. Loading Skeleton
 // API ka jawab aane tak grey pulsing cards dikhte hain.
 
 function skeletonHTML() {
@@ -364,7 +429,7 @@ function skeletonHTML() {
 }
 
 
-// 23. API Error Dikhana
+// 25. API Error Dikhana
 // Internet na ho ya API fail ho to user ko Retry ka option milta hai.
 
 function showError() {
@@ -394,7 +459,7 @@ function showError() {
 }
 
 
-// 24. API se Countries ka Data Lana
+// 26. API se Countries ka Data Lana
 // async ka matlab function asynchronous kaam karega.
 // await API response ka wait karega.
 
@@ -453,7 +518,7 @@ async function fetchCountries() {
 }
 
 
-// 25. Project Initialize Karna
+// 27. Project Initialize Karna
 // JavaScript load hote hi API se countries fetch karo.
 
 fetchCountries();
