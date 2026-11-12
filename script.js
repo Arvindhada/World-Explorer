@@ -100,6 +100,10 @@ const API_URL =
 
 const container = document.querySelector("#countryContainer");
 
+// Do countries compare karne wala box
+
+const comparisonContainer = document.querySelector("#comparisonContainer");
+
 
 // 10. Data Store karne ke liye state
 
@@ -112,8 +116,26 @@ let favoriteCountries = [];
 // Kaunsa region active hai ("all" = sab)
 let activeRegion = "all";
 
+// Compare ke liye select ki hui countries (maximum 2)
+let selectedCountries = [];
 
-// 11. Population format karna
+// Compare limit ka message
+let compareMessage = "";
+
+
+// 11. Tailwind Button Classes
+// Ek jagah rakhne se button ke states manage karna easy hota hai.
+
+const BTN_COMPARE_ON = "bg-violet-600 text-white hover:bg-violet-700";
+
+const BTN_COMPARE_OFF =
+  "bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200 hover:bg-violet-100";
+
+const BTN_BASE =
+  "rounded-lg px-3 py-2 text-sm font-semibold transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2";
+
+
+// 12. Population format karna
 // Example: 1000000 = 1.0 M
 
 function formatPopulation(num) {
@@ -130,7 +152,7 @@ function formatPopulation(num) {
 }
 
 
-// 12. Region normalize karna
+// 13. Region normalize karna
 // API mein "Polar", "Antarctic" aur "Antarctic Ocean" jaise alag region
 // naam aate hain. Unhe ek hi naam mein laate hain.
 
@@ -142,7 +164,7 @@ function normalizeRegion(region) {
 }
 
 
-// 13. Chhota safety helper
+// 14. Chhota safety helper
 // API ka data innerHTML mein ja raha hai, isliye special characters
 // escape karna zaroori hai.
 
@@ -159,7 +181,7 @@ function escapeHtml(value) {
 }
 
 
-// 14. Card ke andar ki ek info line
+// 15. Card ke andar ki ek info line
 
 function infoRow(label, value) {
   return `
@@ -171,10 +193,11 @@ function infoRow(label, value) {
 }
 
 
-// 15. Ek Country Card ka HTML
+// 16. Ek Country Card ka HTML
 
 function cardHTML(country) {
   const safeName = escapeHtml(country.name);
+  const isComparing = selectedCountries.includes(country.name);
 
   // Flag na mile to emoji fallback dikhana
   const flagMarkup = country.flag
@@ -208,7 +231,7 @@ function cardHTML(country) {
         <button
           type="button"
           data-name="${safeName}"
-          class="favorite-btn w-full rounded-lg bg-gray-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 active:scale-[0.98]"
+          class="favorite-btn ${BTN_BASE} w-full bg-gray-900 text-white hover:bg-gray-800"
         >
           🤍 Add Favorite
         </button>
@@ -217,7 +240,7 @@ function cardHTML(country) {
           <button
             type="button"
             data-name="${safeName}"
-            class="details-btn flex-1 rounded-lg bg-sky-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 active:scale-[0.98]"
+            class="details-btn ${BTN_BASE} flex-1 bg-sky-600 text-white hover:bg-sky-700"
           >
             View Details
           </button>
@@ -225,9 +248,9 @@ function cardHTML(country) {
           <button
             type="button"
             data-name="${safeName}"
-            class="compare-btn flex-1 rounded-lg bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-700 ring-1 ring-inset ring-violet-200 transition hover:bg-violet-100 active:scale-[0.98]"
+            class="compare-btn ${BTN_BASE} flex-1 ${isComparing ? BTN_COMPARE_ON : BTN_COMPARE_OFF}"
           >
-            Compare
+            ${isComparing ? "✓ Comparing" : "Compare"}
           </button>
         </div>
       </div>
@@ -236,9 +259,12 @@ function cardHTML(country) {
 }
 
 
-// 16. Country Cards Render Karna
+// 17. Country Cards Render Karna
 
 function renderCards(countries) {
+  // Comparison box hamesha refresh ho
+  updateComparison();
+
   if (countries.length === 0) {
     container.innerHTML = emptyStateHTML();
     updateStatistics(0);
@@ -250,7 +276,7 @@ function renderCards(countries) {
 }
 
 
-// 17. Dashboard Statistics Update Karna
+// 18. Dashboard Statistics Update Karna
 
 function updateStatistics(shownCount) {
   totalCountriesEl.textContent = allCountries.length;
@@ -259,7 +285,7 @@ function updateStatistics(shownCount) {
 }
 
 
-// 18. Empty State (kuch na mile to)
+// 19. Empty State (kuch na mile to)
 
 function emptyStateHTML() {
   return `
@@ -281,7 +307,7 @@ function emptyStateHTML() {
 }
 
 
-// 19. Countries ko Sort Karna
+// 20. Countries ko Sort Karna
 // Dropdown ki value ke hisaab se list ka order badalta hai.
 
 function sortCountries(countries) {
@@ -301,7 +327,7 @@ function sortCountries(countries) {
 }
 
 
-// 20. Filter chalana
+// 21. Filter chalana
 // Search text country ke naam, capital aur region — teeno mein dhoonda jata hai.
 
 function applyFilters() {
@@ -327,7 +353,7 @@ function applyFilters() {
 }
 
 
-// 21. Region Pills ka Active State
+// 22. Region Pills ka Active State
 // Jo region select hai uske pill ko green banate hain, baaki white.
 
 function paintRegionPills() {
@@ -348,7 +374,183 @@ function paintRegionPills() {
 }
 
 
-// 22. Search Debounce
+// 23. Country Comparison Add / Remove
+
+function toggleCompare(countryName) {
+  if (selectedCountries.includes(countryName)) {
+    selectedCountries = selectedCountries.filter((name) => name !== countryName);
+    compareMessage = "";
+
+  } else {
+    // Maximum 2 countries hi compare kar sakte hain
+    if (selectedCountries.length >= 2) {
+      compareMessage = "You can compare only 2 countries. Remove one first.";
+      updateComparison();
+      return;
+    }
+
+    selectedCountries.push(countryName);
+    compareMessage = "";
+  }
+
+  applyFilters();
+}
+
+
+// 24. Comparison Table Update Karna
+
+function updateComparison() {
+  // selectedCountries ka order maintain karna zaroori hai
+  const comparisonData = selectedCountries
+    .map((name) => allCountries.find((country) => country.name === name))
+    .filter(Boolean);
+
+  // Kuch select nahi hai to placeholder dikhao
+  // (isse "Compare" nav link bhi kaam karta hai)
+  if (comparisonData.length === 0) {
+    comparisonContainer.innerHTML = `
+      <div class="rounded-2xl border-2 border-dashed border-gray-200 bg-white/60 p-8 text-center">
+        <p class="mb-1 text-2xl">⚖️</p>
+        <h2 class="text-base font-bold text-gray-700">Country Comparison</h2>
+        <p class="mt-1 text-sm text-gray-400">
+          Use the <span class="font-semibold text-violet-600">Compare</span> button on any two cards to see them side by side.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  // Selected countries ke remove chips
+  const chips = comparisonData
+    .map(
+      (country) => `
+        <button
+          type="button"
+          data-name="${escapeHtml(country.name)}"
+          class="remove-compare-btn inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-red-50 hover:text-red-600"
+        >
+          ${escapeHtml(country.name)}
+          <span aria-hidden="true">✕</span>
+        </button>
+      `
+    )
+    .join("");
+
+  let bodyHTML = "";
+
+  if (comparisonData.length < 2) {
+    // Sirf ek country select hui hai
+    bodyHTML = `
+      <p class="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        Select one more country to compare.
+      </p>
+    `;
+
+  } else {
+    const first = comparisonData[0];
+    const second = comparisonData[1];
+
+    // Zyada population wala green highlight hoga
+    const firstWins = first.rawPopulation > second.rawPopulation;
+    const secondWins = second.rawPopulation > first.rawPopulation;
+
+    bodyHTML = `
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-center text-sm">
+          <thead>
+            <tr class="bg-gray-50">
+              <th class="w-1/4 border border-gray-200 px-3 py-2.5 text-left font-semibold text-gray-500">Details</th>
+              <th class="border border-gray-200 px-3 py-2.5 font-bold text-gray-800">${escapeHtml(first.name)}</th>
+              <th class="border border-gray-200 px-3 py-2.5 font-bold text-gray-800">${escapeHtml(second.name)}</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr>
+              <td class="border border-gray-200 px-3 py-2.5 text-left font-medium text-gray-500">Flag</td>
+              <td class="border border-gray-200 px-3 py-2.5">
+                <img src="${escapeHtml(first.flag)}" alt="" class="mx-auto h-12 w-20 rounded object-cover">
+              </td>
+              <td class="border border-gray-200 px-3 py-2.5">
+                <img src="${escapeHtml(second.flag)}" alt="" class="mx-auto h-12 w-20 rounded object-cover">
+              </td>
+            </tr>
+
+            <tr>
+              <td class="border border-gray-200 px-3 py-2.5 text-left font-medium text-gray-500">Capital</td>
+              <td class="border border-gray-200 px-3 py-2.5 text-gray-700">${escapeHtml(first.capital)}</td>
+              <td class="border border-gray-200 px-3 py-2.5 text-gray-700">${escapeHtml(second.capital)}</td>
+            </tr>
+
+            <tr>
+              <td class="border border-gray-200 px-3 py-2.5 text-left font-medium text-gray-500">Region</td>
+              <td class="border border-gray-200 px-3 py-2.5 text-gray-700">${escapeHtml(first.region)}</td>
+              <td class="border border-gray-200 px-3 py-2.5 text-gray-700">${escapeHtml(second.region)}</td>
+            </tr>
+
+            <tr>
+              <td class="border border-gray-200 px-3 py-2.5 text-left font-medium text-gray-500">Population</td>
+              <td class="border border-gray-200 px-3 py-2.5 ${firstWins ? "bg-green-50 font-bold text-green-700" : "text-gray-700"}">
+                ${escapeHtml(first.population)}
+              </td>
+              <td class="border border-gray-200 px-3 py-2.5 ${secondWins ? "bg-green-50 font-bold text-green-700" : "text-gray-700"}">
+                ${escapeHtml(second.population)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  comparisonContainer.innerHTML = `
+    <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
+
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 class="flex items-center gap-2 text-lg font-bold text-gray-800">⚖️ Country Comparison</h2>
+
+        <button
+          type="button"
+          id="clearCompareBtn"
+          class="rounded-full px-3 py-1.5 text-sm font-medium text-gray-500 transition hover:bg-gray-100 hover:text-red-600"
+        >
+          Clear all
+        </button>
+      </div>
+
+      <div class="mb-4 flex flex-wrap gap-2">${chips}</div>
+
+      ${
+        compareMessage
+          ? `<p class="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600">${escapeHtml(compareMessage)}</p>`
+          : ""
+      }
+
+      ${bodyHTML}
+    </div>
+  `;
+}
+
+
+// 25. Comparison Box ke Buttons
+
+comparisonContainer.addEventListener("click", (event) => {
+  const removeBtn = event.target.closest(".remove-compare-btn");
+
+  if (removeBtn) {
+    toggleCompare(removeBtn.dataset.name);
+    return;
+  }
+
+  if (event.target.closest("#clearCompareBtn")) {
+    selectedCountries = [];
+    compareMessage = "";
+    applyFilters();
+  }
+});
+
+
+// 26. Search Debounce
 // Har key stroke par 250 countries filter karne ki zaroorat nahi —
 // 250ms ruk kar chalate hain.
 
@@ -384,7 +586,7 @@ favoritesFilter.addEventListener("change", () => applyFilters(true));
 paintRegionPills();
 
 
-// 23. Country Card Buttons Handle Karna
+// 27. Country Card Buttons Handle Karna
 // Event Delegation: parent container par ek listener,
 // saare buttons usi se handle ho jaate hain.
 
@@ -417,7 +619,7 @@ container.addEventListener("click", (event) => {
 });
 
 
-// 24. Loading Skeleton
+// 28. Loading Skeleton
 // API ka jawab aane tak grey pulsing cards dikhte hain.
 
 function skeletonHTML() {
@@ -429,7 +631,7 @@ function skeletonHTML() {
 }
 
 
-// 25. API Error Dikhana
+// 29. API Error Dikhana
 // Internet na ho ya API fail ho to user ko Retry ka option milta hai.
 
 function showError() {
@@ -459,7 +661,7 @@ function showError() {
 }
 
 
-// 26. API se Countries ka Data Lana
+// 30. API se Countries ka Data Lana
 // async ka matlab function asynchronous kaam karega.
 // await API response ka wait karega.
 
@@ -518,7 +720,7 @@ async function fetchCountries() {
 }
 
 
-// 27. Project Initialize Karna
+// 31. Project Initialize Karna
 // JavaScript load hote hi API se countries fetch karo.
 
 fetchCountries();
