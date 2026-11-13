@@ -186,6 +186,28 @@
   </main>
 
 
+  <!-- ========== COUNTRY DETAIL MODAL ========== -->
+  <div
+    id="countryModal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modalTitle"
+    class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+  >
+    <div class="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white shadow-2xl">
+      <button
+        id="closeModal"
+        type="button"
+        aria-label="Close country details"
+        class="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-xl leading-none text-gray-500 shadow-sm transition hover:bg-gray-100 hover:text-gray-800"
+      >
+        &times;
+      </button>
+      <div id="modalDetails"></div>
+    </div>
+  </div>
+
+
   <!-- ========== FOOTER ========== -->
   <footer id="footer" class="bg-white border-t border-gray-100 mt-12">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

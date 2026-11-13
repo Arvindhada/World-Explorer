@@ -96,13 +96,19 @@ const API_URL =
   "https://countries.dev/countries?fields=name,capital,region,population,flags";
 
 
-// 9. Country cards dikhane wala container
+// 9. Country cards, Comparison aur Modal ke elements
 
 const container = document.querySelector("#countryContainer");
 
 // Do countries compare karne wala box
 
 const comparisonContainer = document.querySelector("#comparisonContainer");
+
+// Country details ka popup, uska content aur close button
+
+const countryModal = document.querySelector("#countryModal");
+const modalDetails = document.querySelector("#modalDetails");
+const closeModalBtn = document.querySelector("#closeModal");
 
 
 // 10. Data Store karne ke liye state
@@ -121,6 +127,9 @@ let selectedCountries = [];
 
 // Compare limit ka message
 let compareMessage = "";
+
+// Popup band hone par focus wapas kahan bhejna hai
+let lastFocusedElement = null;
 
 
 // 11. Tailwind Button Classes
@@ -374,7 +383,129 @@ function paintRegionPills() {
 }
 
 
-// 23. Country Comparison Add / Remove
+// 23. Country Details Popup Dikhana
+
+function openDetails(countryName) {
+  const country = allCountries.find((item) => item.name === countryName);
+
+  if (!country) return;
+
+  // Focus wapas karne ke liye yaad rakhna
+  lastFocusedElement = document.activeElement;
+
+  modalDetails.innerHTML = `
+    <div class="relative h-44 bg-gray-100">
+      ${
+        country.flagLarge
+          ? `<img
+               src="${escapeHtml(country.flagLarge)}"
+               alt="Flag of ${escapeHtml(country.name)}"
+               class="h-full w-full object-cover"
+             >`
+          : `<div class="flex h-full w-full items-center justify-center text-5xl">🌐</div>`
+      }
+
+      <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent"></div>
+
+      <h2
+        id="modalTitle"
+        class="absolute inset-x-5 bottom-4 text-xl font-extrabold leading-tight text-white drop-shadow"
+      >
+        ${escapeHtml(country.name)}
+      </h2>
+    </div>
+
+    <dl class="space-y-3 p-5 text-sm">
+      <div class="flex items-center justify-between gap-4 border-b border-gray-100 pb-2">
+        <dt class="text-gray-400">Capital</dt>
+        <dd class="text-right font-semibold text-gray-800">${escapeHtml(country.capital)}</dd>
+      </div>
+
+      <div class="flex items-center justify-between gap-4 border-b border-gray-100 pb-2">
+        <dt class="text-gray-400">Region</dt>
+        <dd class="text-right font-semibold text-gray-800">${escapeHtml(country.region)}</dd>
+      </div>
+
+      <div class="flex items-center justify-between gap-4">
+        <dt class="text-gray-400">Population</dt>
+        <dd class="text-right font-semibold text-gray-800">${escapeHtml(country.population)}</dd>
+      </div>
+    </dl>
+  `;
+
+  // Popup dikhana
+  countryModal.classList.remove("hidden");
+  countryModal.classList.add("flex");
+
+  // Background scroll lock
+  document.body.classList.add("overflow-hidden");
+
+  // Keyboard user ka focus popup ke andar le jao
+  closeModalBtn.focus();
+}
+
+
+// 24. Popup Band Karna
+
+function closeDetails() {
+  if (countryModal.classList.contains("hidden")) return;
+
+  countryModal.classList.add("hidden");
+  countryModal.classList.remove("flex");
+
+  document.body.classList.remove("overflow-hidden");
+
+  // Focus wapas usi button par jahan se popup khula tha
+  if (lastFocusedElement && document.contains(lastFocusedElement)) {
+    lastFocusedElement.focus();
+  }
+}
+
+
+// 25. Popup Close — button, backdrop aur Escape key
+
+closeModalBtn.addEventListener("click", closeDetails);
+
+countryModal.addEventListener("click", (event) => {
+  // Click popup ke bahar (backdrop par) hua
+  if (event.target === countryModal) {
+    closeDetails();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeDetails();
+  }
+});
+
+
+// 26. Popup ke andar focus trap (keyboard accessibility)
+
+countryModal.addEventListener("keydown", (event) => {
+  if (event.key !== "Tab") return;
+
+  const focusable = countryModal.querySelectorAll(
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+  );
+
+  if (focusable.length === 0) return;
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+});
+
+
+// 27. Country Comparison Add / Remove
 
 function toggleCompare(countryName) {
   if (selectedCountries.includes(countryName)) {
@@ -397,7 +528,7 @@ function toggleCompare(countryName) {
 }
 
 
-// 24. Comparison Table Update Karna
+// 28. Comparison Table Update Karna
 
 function updateComparison() {
   // selectedCountries ka order maintain karna zaroori hai
@@ -532,7 +663,7 @@ function updateComparison() {
 }
 
 
-// 25. Comparison Box ke Buttons
+// 29. Comparison Box ke Buttons
 
 comparisonContainer.addEventListener("click", (event) => {
   const removeBtn = event.target.closest(".remove-compare-btn");
@@ -550,7 +681,7 @@ comparisonContainer.addEventListener("click", (event) => {
 });
 
 
-// 26. Search Debounce
+// 30. Search Debounce
 // Har key stroke par 250 countries filter karne ki zaroorat nahi —
 // 250ms ruk kar chalate hain.
 
@@ -586,7 +717,7 @@ favoritesFilter.addEventListener("change", () => applyFilters(true));
 paintRegionPills();
 
 
-// 27. Country Card Buttons Handle Karna
+// 31. Country Card Buttons Handle Karna
 // Event Delegation: parent container par ek listener,
 // saare buttons usi se handle ho jaate hain.
 
@@ -619,7 +750,7 @@ container.addEventListener("click", (event) => {
 });
 
 
-// 28. Loading Skeleton
+// 32. Loading Skeleton
 // API ka jawab aane tak grey pulsing cards dikhte hain.
 
 function skeletonHTML() {
@@ -631,7 +762,7 @@ function skeletonHTML() {
 }
 
 
-// 29. API Error Dikhana
+// 33. API Error Dikhana
 // Internet na ho ya API fail ho to user ko Retry ka option milta hai.
 
 function showError() {
@@ -661,7 +792,7 @@ function showError() {
 }
 
 
-// 30. API se Countries ka Data Lana
+// 34. API se Countries ka Data Lana
 // async ka matlab function asynchronous kaam karega.
 // await API response ka wait karega.
 
@@ -720,7 +851,7 @@ async function fetchCountries() {
 }
 
 
-// 31. Project Initialize Karna
+// 35. Project Initialize Karna
 // JavaScript load hote hi API se countries fetch karo.
 
 fetchCountries();
