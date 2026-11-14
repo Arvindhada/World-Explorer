@@ -49,7 +49,7 @@
           <a href="#explore" class="flex items-center gap-1.5 text-green-700 font-semibold text-sm border-b-2 border-green-600 pb-0.5">
              <span>Explore</span>
           </a>
-          <a href="#favorites-section" class="flex items-center gap-1.5 text-gray-500 hover:text-green-600 text-sm font-medium transition">
+          <a href="#favorites-section" data-show-favorites class="flex items-center gap-1.5 text-gray-500 hover:text-green-600 text-sm font-medium transition">
              <span>Favorites</span>
           </a>
           <a href="#comparisonContainer" class="flex items-center gap-1.5 text-gray-500 hover:text-green-600 text-sm font-medium transition">
@@ -79,7 +79,7 @@
       <!-- Mobile Nav (hidden by default) -->
       <nav id="mobileMenu" aria-label="Mobile navigation" class="hidden flex-col gap-3 border-t border-gray-100 pb-4 pt-3 md:hidden">
         <a href="#explore" class="text-green-700 font-semibold text-sm"> Explore</a>
-        <a href="#favorites-section" class="text-gray-500 text-sm"> Favorites</a>
+        <a href="#favorites-section" data-show-favorites class="text-gray-500 text-sm"> Favorites</a>
         <a href="#comparisonContainer" class="text-gray-500 text-sm"> Compare</a>
         <a href="#footer" class="text-gray-500 text-sm"> About</a>
       </nav>
@@ -150,9 +150,9 @@
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
     <!-- Stats + Sort Bar -->
-    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div id="favorites-section" class="flex flex-wrap items-center justify-between gap-4 mb-6">
       <div>
-        <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">🌍 Popular Countries</h2>
+        <h2 id="listHeading" class="text-lg font-bold text-gray-800 flex items-center gap-2">🌍 Popular Countries</h2>
         <p class="text-sm text-gray-500 mt-0.5" aria-live="polite">
           Showing <span id="showingCountries" class="font-semibold text-green-600">0</span> of
           <span id="totalCountries" class="font-semibold text-gray-700">0</span> countries
@@ -226,7 +226,7 @@
         <nav class="flex flex-wrap justify-center gap-6 text-sm text-gray-500">
           <a href="#" class="hover:text-green-600 transition">Home</a>
           <a href="#explore" class="hover:text-green-600 transition">Explore</a>
-          <a href="#favorites-section" class="hover:text-green-600 transition">Favorites</a>
+          <a href="#favorites-section" data-show-favorites class="hover:text-green-600 transition">Favorites</a>
           <a href="#comparisonContainer" class="hover:text-green-600 transition">Compare</a>
           <a href="#footer" class="hover:text-green-600 transition">About</a>
         </nav>

@@ -70,6 +70,9 @@ const totalCountriesEl = document.querySelector("#totalCountries");
 const showingCountriesEl = document.querySelector("#showingCountries");
 const favoriteCountEl = document.querySelector("#favoriteCount");
 
+// List ka heading — Favorites mode mein text badalta hai
+const listHeadingEl = document.querySelector("#listHeading");
+
 
 // 6. Sort aur Favorites dropdowns
 
@@ -117,7 +120,7 @@ const closeModalBtn = document.querySelector("#closeModal");
 let allCountries = [];
 
 // User ke favorite countries
-let favoriteCountries = [];
+let favoriteCountries = loadFavorites();
 
 // Kaunsa region active hai ("all" = sab)
 let activeRegion = "all";
@@ -135,6 +138,11 @@ let lastFocusedElement = null;
 // 11. Tailwind Button Classes
 // Ek jagah rakhne se button ke states manage karna easy hota hai.
 
+const BTN_FAVORITE_ON =
+  "bg-red-50 text-red-600 ring-1 ring-inset ring-red-200 hover:bg-red-100";
+
+const BTN_FAVORITE_OFF = "bg-gray-900 text-white hover:bg-gray-800";
+
 const BTN_COMPARE_ON = "bg-violet-600 text-white hover:bg-violet-700";
 
 const BTN_COMPARE_OFF =
@@ -144,7 +152,31 @@ const BTN_BASE =
   "rounded-lg px-3 py-2 text-sm font-semibold transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2";
 
 
-// 12. Population format karna
+// 12. Browser se purane favorites load karna
+
+function loadFavorites() {
+  try {
+    // localStorage sirf text store karta hai,
+    // JSON.parse us text ko wapas array bana deta hai.
+    const saved = JSON.parse(localStorage.getItem("favoriteCountries"));
+    return Array.isArray(saved) ? saved : [];
+  } catch {
+    // Saved data kharab ho to empty array se start karenge
+    return [];
+  }
+}
+
+function saveFavorites() {
+  try {
+    localStorage.setItem("favoriteCountries", JSON.stringify(favoriteCountries));
+  } catch {
+    // Private mode ya quota full — app crash nahi hona chahiye
+    console.warn("Favorites save nahi ho paye.");
+  }
+}
+
+
+// 13. Population format karna
 // Example: 1000000 = 1.0 M
 
 function formatPopulation(num) {
@@ -161,7 +193,7 @@ function formatPopulation(num) {
 }
 
 
-// 13. Region normalize karna
+// 14. Region normalize karna
 // API mein "Polar", "Antarctic" aur "Antarctic Ocean" jaise alag region
 // naam aate hain. Unhe ek hi naam mein laate hain.
 
@@ -173,7 +205,7 @@ function normalizeRegion(region) {
 }
 
 
-// 14. Chhota safety helper
+// 15. Chhota safety helper
 // API ka data innerHTML mein ja raha hai, isliye special characters
 // escape karna zaroori hai.
 
@@ -190,7 +222,7 @@ function escapeHtml(value) {
 }
 
 
-// 15. Card ke andar ki ek info line
+// 16. Card ke andar ki ek info line
 
 function infoRow(label, value) {
   return `
@@ -202,10 +234,11 @@ function infoRow(label, value) {
 }
 
 
-// 16. Ek Country Card ka HTML
+// 17. Ek Country Card ka HTML
 
 function cardHTML(country) {
   const safeName = escapeHtml(country.name);
+  const isFavorite = favoriteCountries.includes(country.name);
   const isComparing = selectedCountries.includes(country.name);
 
   // Flag na mile to emoji fallback dikhana
@@ -240,9 +273,9 @@ function cardHTML(country) {
         <button
           type="button"
           data-name="${safeName}"
-          class="favorite-btn ${BTN_BASE} w-full bg-gray-900 text-white hover:bg-gray-800"
+          class="favorite-btn ${BTN_BASE} w-full ${isFavorite ? BTN_FAVORITE_ON : BTN_FAVORITE_OFF}"
         >
-          🤍 Add Favorite
+          ${isFavorite ? "❤️ Remove Favorite" : "🤍 Add Favorite"}
         </button>
 
         <div class="flex gap-2">
@@ -268,9 +301,15 @@ function cardHTML(country) {
 }
 
 
-// 17. Country Cards Render Karna
+// 18. Country Cards Render Karna
 
 function renderCards(countries) {
+  // Heading: Favorites mode mein alag dikhta hai
+  listHeadingEl.textContent =
+    favoritesFilter.value === "favorites"
+      ? "\u2764\uFE0F Your Favorites"
+      : "\u{1F30D} Popular Countries";
+
   // Comparison box hamesha refresh ho
   updateComparison();
 
@@ -285,7 +324,7 @@ function renderCards(countries) {
 }
 
 
-// 18. Dashboard Statistics Update Karna
+// 19. Dashboard Statistics Update Karna
 
 function updateStatistics(shownCount) {
   totalCountriesEl.textContent = allCountries.length;
@@ -294,29 +333,36 @@ function updateStatistics(shownCount) {
 }
 
 
-// 19. Empty State (kuch na mile to)
+// 20. Empty State (kuch na mile to)
 
 function emptyStateHTML() {
+  // Agar filter "Favorites Only" par hai to alag message
+  const favoritesOnly = favoritesFilter.value === "favorites";
+
+  const icon = favoritesOnly ? "💔" : "🧭";
+  const title = favoritesOnly ? "No favorites yet" : "No countries found";
+  const hint = favoritesOnly
+    ? "Tap the \u{1F90D} Add Favorite button on any country card to save it here."
+    : "Try a different spelling, or clear the region and favorites filters.";
+
   return `
     <div class="col-span-full flex flex-col items-center gap-3 py-16 text-center">
-      <span class="text-4xl">🧭</span>
-      <p class="text-base font-semibold text-gray-600">No countries found</p>
-      <p class="max-w-sm text-sm text-gray-400">
-        Try a different spelling, or clear the region and favorites filters.
-      </p>
+      <span class="text-4xl">${icon}</span>
+      <p class="text-base font-semibold text-gray-600">${title}</p>
+      <p class="max-w-sm text-sm text-gray-400">${hint}</p>
       <button
         type="button"
         id="resetFiltersBtn"
         class="mt-1 rounded-full bg-green-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-green-700 active:scale-95"
       >
-        Reset filters
+        ${favoritesOnly ? "Show all countries" : "Reset filters"}
       </button>
     </div>
   `;
 }
 
 
-// 20. Countries ko Sort Karna
+// 21. Countries ko Sort Karna
 // Dropdown ki value ke hisaab se list ka order badalta hai.
 
 function sortCountries(countries) {
@@ -336,7 +382,7 @@ function sortCountries(countries) {
 }
 
 
-// 21. Filter chalana
+// 22. Filter chalana
 // Search text country ke naam, capital aur region — teeno mein dhoonda jata hai.
 
 function applyFilters() {
@@ -362,7 +408,23 @@ function applyFilters() {
 }
 
 
-// 22. Region Pills ka Active State
+// 23. Favorite Add / Remove
+
+function toggleFavorite(countryName) {
+  if (favoriteCountries.includes(countryName)) {
+    favoriteCountries = favoriteCountries.filter((name) => name !== countryName);
+  } else {
+    favoriteCountries.push(countryName);
+  }
+
+  saveFavorites();
+
+  // Cards aur statistics refresh karna
+  applyFilters();
+}
+
+
+// 24. Region Pills ka Active State
 // Jo region select hai uske pill ko green banate hain, baaki white.
 
 function paintRegionPills() {
@@ -383,7 +445,7 @@ function paintRegionPills() {
 }
 
 
-// 23. Country Details Popup Dikhana
+// 25. Country Details Popup Dikhana
 
 function openDetails(countryName) {
   const country = allCountries.find((item) => item.name === countryName);
@@ -445,7 +507,7 @@ function openDetails(countryName) {
 }
 
 
-// 24. Popup Band Karna
+// 26. Popup Band Karna
 
 function closeDetails() {
   if (countryModal.classList.contains("hidden")) return;
@@ -462,7 +524,7 @@ function closeDetails() {
 }
 
 
-// 25. Popup Close — button, backdrop aur Escape key
+// 27. Popup Close — button, backdrop aur Escape key
 
 closeModalBtn.addEventListener("click", closeDetails);
 
@@ -480,7 +542,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 
-// 26. Popup ke andar focus trap (keyboard accessibility)
+// 28. Popup ke andar focus trap (keyboard accessibility)
 
 countryModal.addEventListener("keydown", (event) => {
   if (event.key !== "Tab") return;
@@ -505,7 +567,7 @@ countryModal.addEventListener("keydown", (event) => {
 });
 
 
-// 27. Country Comparison Add / Remove
+// 29. Country Comparison Add / Remove
 
 function toggleCompare(countryName) {
   if (selectedCountries.includes(countryName)) {
@@ -528,7 +590,7 @@ function toggleCompare(countryName) {
 }
 
 
-// 28. Comparison Table Update Karna
+// 30. Comparison Table Update Karna
 
 function updateComparison() {
   // selectedCountries ka order maintain karna zaroori hai
@@ -663,7 +725,7 @@ function updateComparison() {
 }
 
 
-// 29. Comparison Box ke Buttons
+// 31. Comparison Box ke Buttons
 
 comparisonContainer.addEventListener("click", (event) => {
   const removeBtn = event.target.closest(".remove-compare-btn");
@@ -681,7 +743,7 @@ comparisonContainer.addEventListener("click", (event) => {
 });
 
 
-// 30. Search Debounce
+// 32. Search Debounce
 // Har key stroke par 250 countries filter karne ki zaroorat nahi —
 // 250ms ruk kar chalate hain.
 
@@ -717,7 +779,7 @@ favoritesFilter.addEventListener("change", () => applyFilters(true));
 paintRegionPills();
 
 
-// 31. Country Card Buttons Handle Karna
+// 33. Country Card Buttons Handle Karna
 // Event Delegation: parent container par ek listener,
 // saare buttons usi se handle ho jaate hain.
 
@@ -730,7 +792,9 @@ container.addEventListener("click", (event) => {
   if (button.id === "resetFiltersBtn") {
     searchInput.value = "";
     favoritesFilter.value = "all";
+    sortFilter.value = "default";
     activeRegion = "all";
+    paintRegionPills();
     applyFilters(true);
     return;
   }
@@ -750,7 +814,7 @@ container.addEventListener("click", (event) => {
 });
 
 
-// 32. Loading Skeleton
+// 34. Loading Skeleton
 // API ka jawab aane tak grey pulsing cards dikhte hain.
 
 function skeletonHTML() {
@@ -762,7 +826,7 @@ function skeletonHTML() {
 }
 
 
-// 33. API Error Dikhana
+// 35. API Error Dikhana
 // Internet na ho ya API fail ho to user ko Retry ka option milta hai.
 
 function showError() {
@@ -792,7 +856,7 @@ function showError() {
 }
 
 
-// 34. API se Countries ka Data Lana
+// 36. API se Countries ka Data Lana
 // async ka matlab function asynchronous kaam karega.
 // await API response ka wait karega.
 
@@ -851,7 +915,19 @@ async function fetchCountries() {
 }
 
 
-// 35. Project Initialize Karna
+// 37. Nav ke "Favorites" link
+// Click karne par list apne aap "Favorites Only" mode mein aa jati hai
+// (jaise dropdown se All Countries ko Favorites Only karte hain).
+
+document.querySelectorAll("[data-show-favorites]").forEach((link) => {
+  link.addEventListener("click", () => {
+    favoritesFilter.value = "favorites";
+    applyFilters(true);
+  });
+});
+
+
+// 38. Project Initialize Karna
 // JavaScript load hote hi API se countries fetch karo.
 
 fetchCountries();
