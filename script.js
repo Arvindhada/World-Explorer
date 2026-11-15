@@ -246,12 +246,12 @@ function cardHTML(country) {
     ? `<img
          src="${escapeHtml(country.flag)}"
          alt="Flag of ${safeName}"
-         class="h-full w-full object-cover"
+         class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
        >`
-    : `<div class="flex h-full w-full items-center justify-center text-3xl">🌐</div>`;
+    : `<div class="flex h-full w-full items-center justify-center text-3xl transition-transform duration-300 group-hover:scale-110">🌐</div>`;
 
   return `
-    <article class="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+    <article class="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-green-200 hover:shadow-xl">
 
       <div class="h-36 shrink-0 overflow-hidden bg-gray-100">
         ${flagMarkup}
