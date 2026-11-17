@@ -116,6 +116,12 @@ const closeModalBtn = document.querySelector("#closeModal");
 
 // 10. Data Store karne ke liye state
 
+// Ek baar mein kitne cards render karne hain
+// 250 countries ek saath render karne se page slow ho jata hai,
+// isliye "Show more" button ke saath batches mein dikhate hain.
+// Batch size = 50, matlab ek saath 50 countries dikhengi.
+const PAGE_SIZE = 50;
+
 // API se aane wale saare countries
 let allCountries = [];
 
@@ -133,6 +139,12 @@ let compareMessage = "";
 
 // Popup band hone par focus wapas kahan bhejna hai
 let lastFocusedElement = null;
+
+// Filter ke baad bachi hui countries (pagination ke liye)
+let filteredCountries = [];
+
+// Abhi tak kitne cards screen par hain
+let visibleCount = PAGE_SIZE;
 
 
 // 11. Tailwind Button Classes
@@ -246,6 +258,8 @@ function cardHTML(country) {
     ? `<img
          src="${escapeHtml(country.flag)}"
          alt="Flag of ${safeName}"
+         loading="lazy"
+         decoding="async"
          class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
        >`
     : `<div class="flex h-full w-full items-center justify-center text-3xl transition-transform duration-300 group-hover:scale-110">🌐</div>`;
@@ -304,6 +318,8 @@ function cardHTML(country) {
 // 18. Country Cards Render Karna
 
 function renderCards(countries) {
+  const total = filteredCountries.length;
+
   // Heading: Favorites mode mein alag dikhta hai
   listHeadingEl.textContent =
     favoritesFilter.value === "favorites"
@@ -313,14 +329,17 @@ function renderCards(countries) {
   // Comparison box hamesha refresh ho
   updateComparison();
 
-  if (countries.length === 0) {
+  // Koi country na mile
+  if (total === 0) {
     container.innerHTML = emptyStateHTML();
     updateStatistics(0);
     return;
   }
 
-  container.innerHTML = countries.map(cardHTML).join("");
-  updateStatistics(countries.length);
+  container.innerHTML =
+    countries.map(cardHTML).join("") + loadMoreHTML(total, countries.length);
+
+  updateStatistics(total);
 }
 
 
@@ -385,12 +404,15 @@ function sortCountries(countries) {
 // 22. Filter chalana
 // Search text country ke naam, capital aur region — teeno mein dhoonda jata hai.
 
-function applyFilters() {
+function applyFilters(resetPage = false) {
+  // Filter badla to list dobara shuru se dikhegi
+  if (resetPage) visibleCount = PAGE_SIZE;
+
   const searchText = searchInput.value.trim().toLowerCase();
   const selectedFavorite = favoritesFilter.value;
 
-  const result = allCountries.filter((country) => {
-    // Naam, capital aur region ek hi string mein jod kar search karna
+  filteredCountries = allCountries.filter((country) => {
+    // Naam, capital aur region — teeno mein search chalega
     const haystack =
       `${country.name} ${country.capital} ${country.region}`.toLowerCase();
 
@@ -404,7 +426,10 @@ function applyFilters() {
     return matchesSearch && matchesRegion && matchesFavorite;
   });
 
-  renderCards(sortCountries(result));
+  filteredCountries = sortCountries(filteredCountries);
+
+  // Sirf pehle `visibleCount` cards render karo
+  renderCards(filteredCountries.slice(0, visibleCount));
 }
 
 
@@ -788,6 +813,13 @@ container.addEventListener("click", (event) => {
 
   if (!button) return;
 
+  // Pagination
+  if (button.id === "loadMoreBtn") {
+    visibleCount += PAGE_SIZE;
+    renderCards(filteredCountries.slice(0, visibleCount));
+    return;
+  }
+
   // Empty state ka reset button
   if (button.id === "resetFiltersBtn") {
     searchInput.value = "";
@@ -826,7 +858,31 @@ function skeletonHTML() {
 }
 
 
-// 35. API Error Dikhana
+// 35. "Show more" Button
+// Sirf PAGE_SIZE cards ek baar mein dikhte hain, baaki isse aate hain.
+
+function loadMoreHTML(total, shown) {
+  if (shown >= total) return "";
+
+  const remaining = total - shown;
+  const nextBatch = Math.min(PAGE_SIZE, remaining);
+
+  return `
+    <div class="col-span-full flex flex-col items-center gap-2 pt-2">
+      <button
+        type="button"
+        id="loadMoreBtn"
+        class="rounded-full bg-green-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 active:scale-95"
+      >
+        Show ${nextBatch} more
+      </button>
+      <p class="text-xs text-gray-400">${remaining} countries left</p>
+    </div>
+  `;
+}
+
+
+// 36. API Error Dikhana
 // Internet na ho ya API fail ho to user ko Retry ka option milta hai.
 
 function showError() {
@@ -856,7 +912,7 @@ function showError() {
 }
 
 
-// 36. API se Countries ka Data Lana
+// 37. API se Countries ka Data Lana
 // async ka matlab function asynchronous kaam karega.
 // await API response ka wait karega.
 
@@ -915,7 +971,7 @@ async function fetchCountries() {
 }
 
 
-// 37. Nav ke "Favorites" link
+// 38. Nav ke "Favorites" link
 // Click karne par list apne aap "Favorites Only" mode mein aa jati hai
 // (jaise dropdown se All Countries ko Favorites Only karte hain).
 
@@ -927,7 +983,7 @@ document.querySelectorAll("[data-show-favorites]").forEach((link) => {
 });
 
 
-// 38. Project Initialize Karna
+// 39. Project Initialize Karna
 // JavaScript load hote hi API se countries fetch karo.
 
 fetchCountries();
