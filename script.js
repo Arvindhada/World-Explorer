@@ -1,6 +1,10 @@
 // ==========================================================
 // WORLD-EXPLORER PROJECT
-// Is file mein project ka saara JavaScript logic aayega.
+// Is file mein JavaScript ka complete logic hai.
+// API, Cards, Search, Filter, Sort, Favorites,
+// Details Popup aur Country Comparison.
+// Saara UI sirf Tailwind CSS utility classes se banta hai —
+// koi custom CSS class use nahi hoti.
 // ==========================================================
 
 
