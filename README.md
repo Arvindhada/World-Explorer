@@ -15,15 +15,13 @@ Live data comes from the free [countries.dev](https://countries.dev) API (250 co
 | ↕️ Sorting | Name A → Z, Z → A, and population high → low / low → high. |
 | ⚖️ Comparison | Pick any two countries and see flags, capitals, regions and population side by side. The larger population is highlighted. |
 | ❤️ Favorites | Save countries with one click. Favorites persist in `localStorage` and the **Favorites** nav link jumps straight to your list. |
-| 🪟 Details popup | Full flag, capital, region and population in an accessible modal. |
+| 📄 Country detail page | “View Details” opens a full page with the flag, native name, basic information, general details, geography, map links and bordering countries. |
 | 📄 Pagination | 50 countries render at a time with a "Show more" button, so the page stays fast. |
 | 🦴 Loading & error states | Shimmer skeleton cards while loading, and a retry button if the API fails. |
 
 ## ♿ Accessibility
 
-- Modal uses `role="dialog"`, `aria-modal` and `aria-labelledby`.
-- Escape closes the popup, the backdrop is clickable, and focus is trapped inside while it is open.
-- Focus returns to the button that opened the popup.
+- Escape closes the detail page, and focus rings stay visible on every link and button.
 - Live region (`aria-live="polite"`) announces the visible country count.
 - Every action button has a visible `focus-visible` ring.
 
@@ -52,7 +50,7 @@ WORLD-EXPLORER/
 4. Helpers — `formatPopulation`, `normalizeRegion`, `escapeHtml`, `infoRow`
 5. Rendering — `cardHTML`, `renderCards`, `updateStatistics`, `skeletonHTML`, `loadMoreHTML`
 6. Filtering — `sortCountries`, `applyFilters`
-7. Interactions — favorites, details popup, comparison
+7. Interactions — favorites, detail page, comparison
 8. Data loading — `fetchCountries`
 
 ## 🚀 Run Locally
@@ -71,7 +69,7 @@ python3 -m http.server 5500
 ## 🔌 API
 
 ```
-GET https://countries.dev/countries?fields=name,capital,region,population,flags
+GET https://countries.dev/countries?fields=name,nativeName,capital,region,subregion,population,area,populationDensity,demonym,languages,currencies,flags,latlng,timezones,borders,alpha2Code,alpha3Code,callingCodes,topLevelDomain,independent,regionalBlocs,maps,altSpellings
 ```
 
 Returns an array of 250 countries:
@@ -89,16 +87,22 @@ Returns an array of 250 countries:
 The app normalises the data into this shape:
 
 ```js
-{ name, capital, region, flag, flagLarge, population /* formatted */, rawPopulation }
+{
+  name, nativeName, capital, region, subregion, demonym,
+  flag, flagLarge, population /* formatted */, rawPopulation,
+  areaText, densityText, languages, currencies, latlng,
+  timezones, borders, alpha3, callingCode, tld,
+  independent, blocs, altSpellings, maps
+}
 ```
 
-`flag` (PNG) is used in the cards for speed, `flagLarge` (SVG) in the details popup for sharpness, and `rawPopulation` is kept for correct numeric sorting.
+`flag` (PNG) is used in the cards for speed, `flagLarge` (SVG) on the detail page for sharpness, and `rawPopulation` is kept for correct numeric sorting.
 
 ## 📝 Notes
 
 - Region names are normalised so countries reported under "Polar", "Antarctic" or "Antarctic Ocean" all fall under **Antarctic**.
 - Every value coming from the API is passed through `escapeHtml()` before it reaches `innerHTML`.
-- All popup rendering uses a single `modalDetails` container, so there is no duplicated markup.
+- The whole detail page is rendered into one container (`#countryPageContent`), so there is no duplicated markup.
 
 ---
 

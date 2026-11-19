@@ -1,667 +1,914 @@
-// ==========================================================
-// WORLD-EXPLORER PROJECT
-// Is file mein JavaScript ka complete logic hai.
-// API, Cards, Search, Filter, Sort, Favorites,
-// Details Popup aur Country Comparison.
-// Saara UI sirf Tailwind CSS utility classes se banta hai —
-// koi custom CSS class use nahi hoti.
-// ==========================================================
+// =========================================================
+// WORLD EXPLORER - script.js
+// API se countries laate hain, cards banate hain, search,
+// region filter, sort, favorites, compare aur detail page
+// sab yahan handle hota hai.
+// Simple JavaScript - koi framework nahi.
+// =========================================================
 
 
-// 1. HTML Elements ko JavaScript se connect karna
+// ---------------------------------------------------------
+// 1. Select Elements
+// ---------------------------------------------------------
 
-// Mobile menu button aur mobile nav
-const mobileMenuBtn = document.querySelector("#mobileMenuBtn");
-const mobileMenu = document.querySelector("#mobileMenu");
+const countryContainer = document.querySelector("#countryContainer");
+const comparisonContainer = document.querySelector("#comparisonContainer");
 
-
-// 2. Mobile Menu Toggle
-// Chhoti screen par hamburger button se menu khulta/band hota hai.
-
-mobileMenuBtn.addEventListener("click", () => {
-  // Abhi menu khula hai ya band, ye pata karna
-  const isOpen = !mobileMenu.classList.contains("hidden");
-
-  // hidden ↔ flex toggle
-  mobileMenu.classList.toggle("hidden", isOpen);
-  mobileMenu.classList.toggle("flex", !isOpen);
-
-  // Screen reader ko batao menu khula hai ya nahi
-  mobileMenuBtn.setAttribute("aria-expanded", String(!isOpen));
-
-  // Icon badlo: ☰ ↔ ✕
-  mobileMenuBtn.textContent = isOpen ? "☰" : "✕";
-});
-
-
-// Mobile menu ke kisi link par click ho to menu band kar dena
-
-mobileMenu.addEventListener("click", (event) => {
-  if (!event.target.closest("a")) return;
-
-  mobileMenu.classList.add("hidden");
-  mobileMenu.classList.remove("flex");
-  mobileMenuBtn.setAttribute("aria-expanded", "false");
-  mobileMenuBtn.textContent = "☰";
-});
-
-
-// 3. Search Elements
-
-// Search box aur search button
 const searchInput = document.querySelector("#searchInput");
-const searchButton = document.querySelector("#searchBtn");
+const searchBtn = document.querySelector("#searchBtn");
 
-
-// 4. Search Box ke Events
-
-// Search button click hone par filter chalana
-searchButton.addEventListener("click", () => applyFilters(true));
-
-// Search box mein Enter press karne par bhi turant filter
-searchInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    applyFilters(true);
-  }
-});
-
-
-// 5. Dashboard Statistics Elements
-// Total countries, screen par dikhne wali countries aur favorites ki count.
+const regionPills = document.querySelector("#regionPills");
+const sortFilter = document.querySelector("#sortFilter");
+const favoritesFilter = document.querySelector("#favoritesFilter");
+const listHeading = document.querySelector("#listHeading");
 
 const totalCountriesEl = document.querySelector("#totalCountries");
 const showingCountriesEl = document.querySelector("#showingCountries");
 const favoriteCountEl = document.querySelector("#favoriteCount");
 
-// List ka heading — Favorites mode mein text badalta hai
-const listHeadingEl = document.querySelector("#listHeading");
+const countryPage = document.querySelector("#countryPage");
+const countryPageContent = document.querySelector("#countryPageContent");
+const backToExploreBtn = document.querySelector("#backToExploreBtn");
 
+const exploreSection = document.querySelector("#explore");
+const mainContent = document.querySelector("#mainContent");
+const footer = document.querySelector("#footer");
 
-// 6. Sort aur Favorites dropdowns
-
-const sortFilter = document.querySelector("#sortFilter");
-const favoritesFilter = document.querySelector("#favoritesFilter");
-
-// Region filter ke pills wala wrapper
-const regionPills = document.querySelector("#regionPills");
-
-
-// 7. Footer ka year current rakho
+const mobileMenuBtn = document.querySelector("#mobileMenuBtn");
+const mobileMenu = document.querySelector("#mobileMenu");
 
 const yearEl = document.querySelector("#year");
 
-if (yearEl) {
-  yearEl.textContent = new Date().getFullYear();
-}
 
+// ---------------------------------------------------------
+// 2. Global Data
+// ---------------------------------------------------------
 
-// 8. API URL
-// Yahan se hum countries ka data API ke through laate hain.
+// API se aaya pura data yahan save hota hai
+let countries = [];
 
-const API_URL =
-  "https://countries.dev/countries?fields=name,capital,region,population,flags";
+// Favorites browser ki memory se wapas laao
+let favorites = JSON.parse(localStorage.getItem("favoriteCountries")) || [];
 
+// Kaunsa region select hai ("all" = sab regions)
+let selectedRegion = "all";
 
-// 9. Country cards, Comparison aur Modal ke elements
+// Header nav me kaunsa tab active hai ("explore" ya "favorites")
+let activeNav = "explore";
 
-const container = document.querySelector("#countryContainer");
+// Compare ke liye chuni hui countries (maximum 2)
+let compareCountries = [];
 
-// Do countries compare karne wala box
-
-const comparisonContainer = document.querySelector("#comparisonContainer");
-
-// Country details ka popup, uska content aur close button
-
-const countryModal = document.querySelector("#countryModal");
-const modalDetails = document.querySelector("#modalDetails");
-const closeModalBtn = document.querySelector("#closeModal");
-
-
-// 10. Data Store karne ke liye state
-
-// Ek baar mein kitne cards render karne hain
-// 250 countries ek saath render karne se page slow ho jata hai,
-// isliye "Show more" button ke saath batches mein dikhate hain.
-// Batch size = 50, matlab ek saath 50 countries dikhengi.
-const PAGE_SIZE = 50;
-
-// API se aane wale saare countries
-let allCountries = [];
-
-// User ke favorite countries
-let favoriteCountries = loadFavorites();
-
-// Kaunsa region active hai ("all" = sab)
-let activeRegion = "all";
-
-// Compare ke liye select ki hui countries (maximum 2)
-let selectedCountries = [];
-
-// Compare limit ka message
+// Compare ki limit ka message
 let compareMessage = "";
 
-// Popup band hone par focus wapas kahan bhejna hai
-let lastFocusedElement = null;
+// Detail page par abhi kaunsi country khuli hai
+let activeCountry = "";
 
-// Filter ke baad bachi hui countries (pagination ke liye)
-let filteredCountries = [];
-
-// Abhi tak kitne cards screen par hain
-let visibleCount = PAGE_SIZE;
+// Detail page se wapas aane par yahi scroll position dikhani hai
+let oldScroll = 0;
 
 
-// 11. Tailwind Button Classes
-// Ek jagah rakhne se button ke states manage karna easy hota hai.
-
-const BTN_FAVORITE_ON =
-  "bg-red-50 text-red-600 ring-1 ring-inset ring-red-200 hover:bg-red-100";
-
-const BTN_FAVORITE_OFF = "bg-gray-900 text-white hover:bg-gray-800";
-
-const BTN_COMPARE_ON = "bg-violet-600 text-white hover:bg-violet-700";
-
-const BTN_COMPARE_OFF =
-  "bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200 hover:bg-violet-100";
-
-const BTN_BASE =
-  "rounded-lg px-3 py-2 text-sm font-semibold transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2";
+// API URL - jitne fields chahiye utne hi maangte hain
+// limit=50 matlab API se sirf 50 countries aayengi (60 chahiye to limit=60)
+const API_URL =
+  "https://countries.dev/countries?fields=name,nativeName,capital,region,subregion,population,area,demonym,languages,currencies,flags,latlng,timezones,alpha3Code,callingCodes,topLevelDomain&limit=50";
 
 
-// 12. Browser se purane favorites load karna
+// ---------------------------------------------------------
+// 3. Country ki value nikalne wale chhote functions
+// ---------------------------------------------------------
 
-function loadFavorites() {
-  try {
-    // localStorage sirf text store karta hai,
-    // JSON.parse us text ko wapas array bana deta hai.
-    const saved = JSON.parse(localStorage.getItem("favoriteCountries"));
-    return Array.isArray(saved) ? saved : [];
-  } catch {
-    // Saved data kharab ho to empty array se start karenge
-    return [];
+function getCountryName(country) {
+  return country.name || "Unknown Country";
+}
+
+function getCapital(country) {
+  return country.capital || "Not Available";
+}
+
+function getFlag(country) {
+  return country.flags?.svg || country.flags?.png || "";
+}
+
+function getRegion(country) {
+  const region = country.region || "";
+
+  if (
+    region === "Asia" ||
+    region === "Europe" ||
+    region === "Africa" ||
+    region === "Americas" ||
+    region === "Oceania"
+  ) {
+    return region;
+  }
+
+  // API me "Polar" / "Antarctic Ocean" jaise naam aate hain,
+  // unhe ek hi pill (Antarctic) me dikhate hain.
+  if (region === "") {
+    return "Unknown";
+  }
+
+  return "Antarctic";
+}
+
+function getPopulation(country) {
+  if (country.population === null || country.population === undefined) {
+    return "Not Available";
+  }
+
+  return Number(country.population).toLocaleString("en-IN");
+}
+
+function getArea(country) {
+  const area = Number(country.area);
+
+  if (!area || area === 0) {
+    return "Not Available";
+  }
+
+  return area.toLocaleString("en-IN") + " km²";
+}
+
+function getLanguages(country) {
+  const names = [];
+
+  if (country.languages) {
+    for (let i = 0; i < country.languages.length; i++) {
+      names.push(country.languages[i].name);
+    }
+  }
+
+  if (names.length === 0) {
+    return "Not Available";
+  }
+
+  return names.join(", ");
+}
+
+function getCurrencies(country) {
+  const names = [];
+
+  if (country.currencies) {
+    for (let i = 0; i < country.currencies.length; i++) {
+      const currency = country.currencies[i];
+      const symbol = currency.symbol || currency.code;
+      names.push(currency.name + " (" + symbol + ")");
+    }
+  }
+
+  if (names.length === 0) {
+    return "Not Available";
+  }
+
+  return names.join(", ");
+}
+
+function getCallingCode(country) {
+  if (!country.callingCodes || country.callingCodes.length === 0) {
+    return "Not Available";
+  }
+
+  return "+" + country.callingCodes[0];
+}
+
+function getDomain(country) {
+  if (!country.topLevelDomain || country.topLevelDomain.length === 0) {
+    return "Not Available";
+  }
+
+  return country.topLevelDomain.join(", ");
+}
+
+function getTimezones(country) {
+  if (!country.timezones || country.timezones.length === 0) {
+    return "Not Available";
+  }
+
+  return country.timezones.join(", ");
+}
+
+function getLatitude(country) {
+  if (!country.latlng || country.latlng.length < 2) {
+    return "Not Available";
+  }
+
+  const value = country.latlng[0];
+  let direction = "N";
+
+  if (value < 0) {
+    direction = "S";
+  }
+
+  return Math.abs(value).toFixed(2) + "° " + direction;
+}
+
+function getLongitude(country) {
+  if (!country.latlng || country.latlng.length < 2) {
+    return "Not Available";
+  }
+
+  const value = country.latlng[1];
+  let direction = "E";
+
+  if (value < 0) {
+    direction = "W";
+  }
+
+  return Math.abs(value).toFixed(2) + "° " + direction;
+}
+
+// Naam se pura country object dhoondhna
+function findCountry(countryName) {
+  for (let i = 0; i < countries.length; i++) {
+    if (getCountryName(countries[i]) === countryName) {
+      return countries[i];
+    }
+  }
+
+  return null;
+}
+
+
+// ---------------------------------------------------------
+// 4. Stats Cards Update
+// ---------------------------------------------------------
+
+function updateStats(shownCount) {
+  totalCountriesEl.textContent = countries.length;
+  showingCountriesEl.textContent = shownCount;
+  favoriteCountEl.textContent = favorites.length;
+}
+
+
+// ---------------------------------------------------------
+// 5. Loading Skeleton
+// ---------------------------------------------------------
+
+function showSkeleton() {
+  countryContainer.innerHTML = "";
+
+  for (let i = 0; i < 8; i++) {
+    const box = document.createElement("div");
+    box.className = "h-72 animate-pulse rounded-2xl bg-gray-200/80";
+    countryContainer.append(box);
   }
 }
 
-function saveFavorites() {
-  try {
-    localStorage.setItem("favoriteCountries", JSON.stringify(favoriteCountries));
-  } catch {
-    // Private mode ya quota full — app crash nahi hona chahiye
-    console.warn("Favorites save nahi ho paye.");
+
+// ---------------------------------------------------------
+// 6. Country Cards Banana
+// ---------------------------------------------------------
+
+function displayCountries(countryList) {
+
+  // Compare wala box har baar refresh ho
+  displayCompare();
+
+  // Favorites mode me heading badal do
+  if (favoritesFilter.value === "favorites") {
+    listHeading.textContent = "❤️ Your Favorites";
+  } else {
+    listHeading.textContent = "🌍 Popular Countries";
   }
-}
 
+  countryContainer.innerHTML = "";
 
-// 13. Population format karna
-// Example: 1000000 = 1.0 M
-
-function formatPopulation(num) {
-  if (num >= 1_000_000_000) {
-    return (num / 1_000_000_000).toFixed(2) + " B";
+  // Koi country na mile to empty state
+  if (countryList.length === 0) {
+    showEmptyState();
+    updateStats(0);
+    return;
   }
-  if (num >= 1_000_000) {
-    return (num / 1_000_000).toFixed(1) + " M";
-  }
-  if (num >= 1_000) {
-    return (num / 1_000).toFixed(0) + " K";
-  }
-  return String(num);
-}
 
+  for (let i = 0; i < countryList.length; i++) {
 
-// 14. Region normalize karna
-// API mein "Polar", "Antarctic" aur "Antarctic Ocean" jaise alag region
-// naam aate hain. Unhe ek hi naam mein laate hain.
+    const country = countryList[i];
+    const name = getCountryName(country);
+    const flag = getFlag(country);
 
-const KNOWN_REGIONS = ["Asia", "Europe", "Africa", "Americas", "Oceania"];
+    const isFavorite = favorites.includes(name);
+    const isComparing = compareCountries.includes(name);
 
-function normalizeRegion(region) {
-  if (!region) return "Unknown";
-  return KNOWN_REGIONS.includes(region) ? region : "Antarctic";
-}
+    // Flag ka HTML
+    let flagHTML = "";
 
+    if (flag !== "") {
+      flagHTML = `
+        <img
+          src="${flag}"
+          alt="${name} flag"
+          loading="lazy"
+          class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        >
+      `;
+    } else {
+      flagHTML = `
+        <div class="flex h-full w-full items-center justify-center text-3xl">🌐</div>
+      `;
+    }
 
-// 15. Chhota safety helper
-// API ka data innerHTML mein ja raha hai, isliye special characters
-// escape karna zaroori hai.
+    // Favorite button ka style
+    let favoriteClass = "bg-gray-900 text-white hover:bg-gray-800";
+    let favoriteText = "🤍 Add Favorite";
 
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => {
-    return {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;",
-    }[character];
-  });
-}
+    if (isFavorite) {
+      favoriteClass = "bg-red-50 text-red-600 ring-1 ring-inset ring-red-200 hover:bg-red-100";
+      favoriteText = "❤️ Remove Favorite";
+    }
 
+    // Compare button ka style
+    let compareClass = "bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200 hover:bg-violet-100";
+    let compareText = "Compare";
 
-// 16. Card ke andar ki ek info line
+    if (isComparing) {
+      compareClass = "bg-violet-600 text-white hover:bg-violet-700";
+      compareText = "✓ Comparing";
+    }
 
-function infoRow(label, value) {
-  return `
-    <div class="flex items-baseline justify-between gap-3">
-      <dt class="shrink-0 text-gray-400">${label}</dt>
-      <dd class="truncate text-right font-medium text-gray-700" title="${escapeHtml(value)}">${escapeHtml(value)}</dd>
-    </div>
-  `;
-}
+    const card = document.createElement("div");
+    card.className = "group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-green-200 hover:shadow-xl";
 
-
-// 17. Ek Country Card ka HTML
-
-function cardHTML(country) {
-  const safeName = escapeHtml(country.name);
-  const isFavorite = favoriteCountries.includes(country.name);
-  const isComparing = selectedCountries.includes(country.name);
-
-  // Flag na mile to emoji fallback dikhana
-  const flagMarkup = country.flag
-    ? `<img
-         src="${escapeHtml(country.flag)}"
-         alt="Flag of ${safeName}"
-         loading="lazy"
-         decoding="async"
-         class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-       >`
-    : `<div class="flex h-full w-full items-center justify-center text-3xl transition-transform duration-300 group-hover:scale-110">🌐</div>`;
-
-  return `
-    <article class="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-green-200 hover:shadow-xl">
-
+    card.innerHTML = `
       <div class="h-36 shrink-0 overflow-hidden bg-gray-100">
-        ${flagMarkup}
+        ${flagHTML}
       </div>
 
       <div class="flex-1 p-4">
+
         <h3 class="mb-3 line-clamp-2 text-base font-bold leading-snug text-gray-900">
-          ${safeName}
+          ${name}
         </h3>
 
-        <dl class="space-y-1.5 text-sm">
-          ${infoRow("Capital", country.capital)}
-          ${infoRow("Region", country.region)}
-          ${infoRow("Population", country.population)}
-        </dl>
+        <div class="space-y-1.5 text-sm">
+
+          <div class="flex items-baseline justify-between gap-3">
+            <span class="shrink-0 text-gray-400">Capital</span>
+            <span class="truncate text-right font-medium text-gray-700">${getCapital(country)}</span>
+          </div>
+
+          <div class="flex items-baseline justify-between gap-3">
+            <span class="shrink-0 text-gray-400">Region</span>
+            <span class="truncate text-right font-medium text-gray-700">${getRegion(country)}</span>
+          </div>
+
+          <div class="flex items-baseline justify-between gap-3">
+            <span class="shrink-0 text-gray-400">Population</span>
+            <span class="truncate text-right font-medium text-gray-700">${getPopulation(country)}</span>
+          </div>
+
+        </div>
       </div>
 
       <div class="flex flex-col gap-2 p-4 pt-0">
+
         <button
           type="button"
-          data-name="${safeName}"
-          class="favorite-btn ${BTN_BASE} w-full ${isFavorite ? BTN_FAVORITE_ON : BTN_FAVORITE_OFF}"
+          class="favorite_btn w-full rounded-lg px-3 py-2 text-sm font-semibold transition active:scale-[0.98] ${favoriteClass}"
         >
-          ${isFavorite ? "❤️ Remove Favorite" : "🤍 Add Favorite"}
+          ${favoriteText}
         </button>
 
         <div class="flex gap-2">
+
           <button
             type="button"
-            data-name="${safeName}"
-            class="details-btn ${BTN_BASE} flex-1 bg-sky-600 text-white hover:bg-sky-700"
+            class="details_btn flex-1 rounded-lg bg-sky-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 active:scale-[0.98]"
           >
             View Details
           </button>
 
           <button
             type="button"
-            data-name="${safeName}"
-            class="compare-btn ${BTN_BASE} flex-1 ${isComparing ? BTN_COMPARE_ON : BTN_COMPARE_OFF}"
+            class="compare_btn flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition active:scale-[0.98] ${compareClass}"
           >
-            ${isComparing ? "✓ Comparing" : "Compare"}
+            ${compareText}
           </button>
+
         </div>
       </div>
-    </article>
-  `;
-}
+    `;
 
+    // Favorite Button
+    const favoriteBtn = card.querySelector(".favorite_btn");
 
-// 18. Country Cards Render Karna
+    favoriteBtn.addEventListener("click", function () {
+      toggleFavorite(name);
+    });
 
-function renderCards(countries) {
-  const total = filteredCountries.length;
+    // View Details Button
+    const detailsBtn = card.querySelector(".details_btn");
 
-  // Heading: Favorites mode mein alag dikhta hai
-  listHeadingEl.textContent =
-    favoritesFilter.value === "favorites"
-      ? "\u2764\uFE0F Your Favorites"
-      : "\u{1F30D} Popular Countries";
+    detailsBtn.addEventListener("click", function () {
+      showDetails(country);
+    });
 
-  // Comparison box hamesha refresh ho
-  updateComparison();
+    // Compare Button
+    const compareBtn = card.querySelector(".compare_btn");
 
-  // Koi country na mile
-  if (total === 0) {
-    container.innerHTML = emptyStateHTML();
-    updateStatistics(0);
-    return;
+    compareBtn.addEventListener("click", function () {
+      addToCompare(name);
+    });
+
+    countryContainer.append(card);
   }
 
-  container.innerHTML =
-    countries.map(cardHTML).join("") + loadMoreHTML(total, countries.length);
-
-  updateStatistics(total);
+  updateStats(countryList.length);
 }
 
 
-// 19. Dashboard Statistics Update Karna
+// ---------------------------------------------------------
+// 7. Empty State
+// ---------------------------------------------------------
 
-function updateStatistics(shownCount) {
-  totalCountriesEl.textContent = allCountries.length;
-  showingCountriesEl.textContent = shownCount;
-  favoriteCountEl.textContent = favoriteCountries.length;
-}
-
-
-// 20. Empty State (kuch na mile to)
-
-function emptyStateHTML() {
-  // Agar filter "Favorites Only" par hai to alag message
+function showEmptyState() {
   const favoritesOnly = favoritesFilter.value === "favorites";
 
-  const icon = favoritesOnly ? "💔" : "🧭";
-  const title = favoritesOnly ? "No favorites yet" : "No countries found";
-  const hint = favoritesOnly
-    ? "Tap the \u{1F90D} Add Favorite button on any country card to save it here."
-    : "Try a different spelling, or clear the region and favorites filters.";
+  let icon = "🧭";
+  let title = "No countries found";
+  let hint = "Try a different spelling, or clear the region and favorites filters.";
+  let buttonText = "Reset filters";
 
-  return `
+  if (favoritesOnly) {
+    icon = "💔";
+    title = "No favorites yet";
+    hint = "Tap the 🤍 Add Favorite button on any country card to save it here.";
+    buttonText = "Show all countries";
+  }
+
+  countryContainer.innerHTML = `
     <div class="col-span-full flex flex-col items-center gap-3 py-16 text-center">
+
       <span class="text-4xl">${icon}</span>
       <p class="text-base font-semibold text-gray-600">${title}</p>
       <p class="max-w-sm text-sm text-gray-400">${hint}</p>
+
       <button
         type="button"
-        id="resetFiltersBtn"
+        id="resetBtn"
         class="mt-1 rounded-full bg-green-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-green-700 active:scale-95"
       >
-        ${favoritesOnly ? "Show all countries" : "Reset filters"}
+        ${buttonText}
       </button>
+
     </div>
   `;
-}
 
+  const resetBtn = document.querySelector("#resetBtn");
 
-// 21. Countries ko Sort Karna
-// Dropdown ki value ke hisaab se list ka order badalta hai.
-
-function sortCountries(countries) {
-  const sorted = [...countries];
-
-  if (sortFilter.value === "az") {
-    sorted.sort((a, b) => a.name.localeCompare(b.name));
-  } else if (sortFilter.value === "za") {
-    sorted.sort((a, b) => b.name.localeCompare(a.name));
-  } else if (sortFilter.value === "populationHigh") {
-    sorted.sort((a, b) => b.rawPopulation - a.rawPopulation);
-  } else if (sortFilter.value === "populationLow") {
-    sorted.sort((a, b) => a.rawPopulation - b.rawPopulation);
-  }
-
-  return sorted;
-}
-
-
-// 22. Filter chalana
-// Search text country ke naam, capital aur region — teeno mein dhoonda jata hai.
-
-function applyFilters(resetPage = false) {
-  // Filter badla to list dobara shuru se dikhegi
-  if (resetPage) visibleCount = PAGE_SIZE;
-
-  const searchText = searchInput.value.trim().toLowerCase();
-  const selectedFavorite = favoritesFilter.value;
-
-  filteredCountries = allCountries.filter((country) => {
-    // Naam, capital aur region — teeno mein search chalega
-    const haystack =
-      `${country.name} ${country.capital} ${country.region}`.toLowerCase();
-
-    const matchesSearch = haystack.includes(searchText);
-    const matchesRegion =
-      activeRegion === "all" || country.region === activeRegion;
-    const matchesFavorite =
-      selectedFavorite !== "favorites" ||
-      favoriteCountries.includes(country.name);
-
-    return matchesSearch && matchesRegion && matchesFavorite;
+  resetBtn.addEventListener("click", function () {
+    searchInput.value = "";
+    sortFilter.value = "default";
+    favoritesFilter.value = "all";
+    selectedRegion = "all";
+    activeNav = "explore";
+    paintRegionPills();
+    paintNav();
+    filterCountries();
   });
-
-  filteredCountries = sortCountries(filteredCountries);
-
-  // Sirf pehle `visibleCount` cards render karo
-  renderCards(filteredCountries.slice(0, visibleCount));
 }
 
 
-// 23. Favorite Add / Remove
-
-function toggleFavorite(countryName) {
-  if (favoriteCountries.includes(countryName)) {
-    favoriteCountries = favoriteCountries.filter((name) => name !== countryName);
-  } else {
-    favoriteCountries.push(countryName);
-  }
-
-  saveFavorites();
-
-  // Cards aur statistics refresh karna
-  applyFilters();
-}
-
-
-// 24. Region Pills ka Active State
-// Jo region select hai uske pill ko green banate hain, baaki white.
+// ---------------------------------------------------------
+// 8. Region Pills aur Nav ka Color
+// ---------------------------------------------------------
 
 function paintRegionPills() {
-  regionPills.querySelectorAll(".region-btn").forEach((button) => {
-    const isActive = button.dataset.region === activeRegion;
+  const buttons = regionPills.querySelectorAll(".region-btn");
 
-    button.classList.toggle("bg-green-600", isActive);
-    button.classList.toggle("text-white", isActive);
-    button.classList.toggle("shadow-sm", isActive);
+  buttons.forEach(function (button) {
 
-    button.classList.toggle("bg-white", !isActive);
-    button.classList.toggle("text-gray-600", !isActive);
-    button.classList.toggle("border", !isActive);
-    button.classList.toggle("border-gray-200", !isActive);
-    button.classList.toggle("hover:border-green-400", !isActive);
-    button.classList.toggle("hover:text-green-600", !isActive);
+    if (button.dataset.region === selectedRegion) {
+      button.className = "region-btn px-4 py-2 rounded-full font-medium text-sm flex items-center gap-1.5 transition-all bg-green-600 text-white shadow-sm";
+    } else {
+      button.className = "region-btn px-4 py-2 rounded-full font-medium text-sm flex items-center gap-1.5 transition-all bg-white text-gray-600 border border-gray-200 hover:border-green-400 hover:text-green-600";
+    }
+
   });
 }
 
+// Header ke nav me active tab ka color (Explore / Favorites)
+function paintNav() {
+  const links = document.querySelectorAll("[data-nav]");
 
-// 25. Country Details Popup Dikhana
+  links.forEach(function (link) {
 
-function openDetails(countryName) {
-  const country = allCountries.find((item) => item.name === countryName);
+    const isMobile = link.closest("#mobileMenu") !== null;
+    const isActive = link.dataset.nav === activeNav;
 
-  if (!country) return;
-
-  // Focus wapas karne ke liye yaad rakhna
-  lastFocusedElement = document.activeElement;
-
-  modalDetails.innerHTML = `
-    <div class="relative h-44 bg-gray-100">
-      ${
-        country.flagLarge
-          ? `<img
-               src="${escapeHtml(country.flagLarge)}"
-               alt="Flag of ${escapeHtml(country.name)}"
-               class="h-full w-full object-cover"
-             >`
-          : `<div class="flex h-full w-full items-center justify-center text-5xl">🌐</div>`
+    // Mobile menu ke links ka style alag aur simple hai
+    if (isMobile) {
+      if (isActive) {
+        link.className = "text-green-700 font-semibold text-sm";
+      } else {
+        link.className = "text-gray-500 text-sm";
       }
-
-      <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent"></div>
-
-      <h2
-        id="modalTitle"
-        class="absolute inset-x-5 bottom-4 text-xl font-extrabold leading-tight text-white drop-shadow"
-      >
-        ${escapeHtml(country.name)}
-      </h2>
-    </div>
-
-    <dl class="space-y-3 p-5 text-sm">
-      <div class="flex items-center justify-between gap-4 border-b border-gray-100 pb-2">
-        <dt class="text-gray-400">Capital</dt>
-        <dd class="text-right font-semibold text-gray-800">${escapeHtml(country.capital)}</dd>
-      </div>
-
-      <div class="flex items-center justify-between gap-4 border-b border-gray-100 pb-2">
-        <dt class="text-gray-400">Region</dt>
-        <dd class="text-right font-semibold text-gray-800">${escapeHtml(country.region)}</dd>
-      </div>
-
-      <div class="flex items-center justify-between gap-4">
-        <dt class="text-gray-400">Population</dt>
-        <dd class="text-right font-semibold text-gray-800">${escapeHtml(country.population)}</dd>
-      </div>
-    </dl>
-  `;
-
-  // Popup dikhana
-  countryModal.classList.remove("hidden");
-  countryModal.classList.add("flex");
-
-  // Background scroll lock
-  document.body.classList.add("overflow-hidden");
-
-  // Keyboard user ka focus popup ke andar le jao
-  closeModalBtn.focus();
-}
-
-
-// 26. Popup Band Karna
-
-function closeDetails() {
-  if (countryModal.classList.contains("hidden")) return;
-
-  countryModal.classList.add("hidden");
-  countryModal.classList.remove("flex");
-
-  document.body.classList.remove("overflow-hidden");
-
-  // Focus wapas usi button par jahan se popup khula tha
-  if (lastFocusedElement && document.contains(lastFocusedElement)) {
-    lastFocusedElement.focus();
-  }
-}
-
-
-// 27. Popup Close — button, backdrop aur Escape key
-
-closeModalBtn.addEventListener("click", closeDetails);
-
-countryModal.addEventListener("click", (event) => {
-  // Click popup ke bahar (backdrop par) hua
-  if (event.target === countryModal) {
-    closeDetails();
-  }
-});
-
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") {
-    closeDetails();
-  }
-});
-
-
-// 28. Popup ke andar focus trap (keyboard accessibility)
-
-countryModal.addEventListener("keydown", (event) => {
-  if (event.key !== "Tab") return;
-
-  const focusable = countryModal.querySelectorAll(
-    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-  );
-
-  if (focusable.length === 0) return;
-
-  const first = focusable[0];
-  const last = focusable[focusable.length - 1];
-
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault();
-    last.focus();
-
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault();
-    first.focus();
-  }
-});
-
-
-// 29. Country Comparison Add / Remove
-
-function toggleCompare(countryName) {
-  if (selectedCountries.includes(countryName)) {
-    selectedCountries = selectedCountries.filter((name) => name !== countryName);
-    compareMessage = "";
-
-  } else {
-    // Maximum 2 countries hi compare kar sakte hain
-    if (selectedCountries.length >= 2) {
-      compareMessage = "You can compare only 2 countries. Remove one first.";
-      updateComparison();
       return;
     }
 
-    selectedCountries.push(countryName);
-    compareMessage = "";
-  }
+    if (isActive) {
+      link.className = "flex items-center gap-1.5 text-green-700 font-semibold text-sm border-b-2 border-green-600 pb-0.5";
+    } else {
+      link.className = "flex items-center gap-1.5 text-gray-500 hover:text-green-600 text-sm font-medium transition";
+    }
 
-  applyFilters();
+  });
 }
 
 
-// 30. Comparison Table Update Karna
+// ---------------------------------------------------------
+// 9. Search + Region + Favorites + Sort (sab ek jagah)
+// ---------------------------------------------------------
 
-function updateComparison() {
-  // selectedCountries ka order maintain karna zaroori hai
-  const comparisonData = selectedCountries
-    .map((name) => allCountries.find((country) => country.name === name))
-    .filter(Boolean);
+function filterCountries() {
 
-  // Kuch select nahi hai to placeholder dikhao
-  // (isse "Compare" nav link bhi kaam karta hai)
-  if (comparisonData.length === 0) {
+  let list = [...countries];
+
+  // 1. Search - naam, capital aur region teeno me dhoondo
+  const text = searchInput.value.toLowerCase().trim();
+
+  if (text !== "") {
+    list = list.filter(function (country) {
+      const name = (country.name || "").toLowerCase();
+      const capital = (country.capital || "").toLowerCase();
+      const region = (country.region || "").toLowerCase();
+
+      return name.includes(text) || capital.includes(text) || region.includes(text);
+    });
+  }
+
+  // 2. Region Filter
+  if (selectedRegion !== "all") {
+    list = list.filter(function (country) {
+      return getRegion(country) === selectedRegion;
+    });
+  }
+
+  // 3. Favorites Only
+  if (favoritesFilter.value === "favorites") {
+    list = list.filter(function (country) {
+      return favorites.includes(getCountryName(country));
+    });
+  }
+
+  // 4. Sorting
+  const sort = sortFilter.value;
+
+  if (sort === "az") {
+    list.sort(function (a, b) {
+      return getCountryName(a).localeCompare(getCountryName(b));
+    });
+  } else if (sort === "za") {
+    list.sort(function (a, b) {
+      return getCountryName(b).localeCompare(getCountryName(a));
+    });
+  } else if (sort === "populationHigh") {
+    list.sort(function (a, b) {
+      return Number(b.population) - Number(a.population);
+    });
+  } else if (sort === "populationLow") {
+    list.sort(function (a, b) {
+      return Number(a.population) - Number(b.population);
+    });
+  }
+
+    // API se jo aayi hai wahi dikhao
+    displayCountries(list);
+}
+
+
+// ---------------------------------------------------------
+// 10. Favorite Add / Remove
+// ---------------------------------------------------------
+
+function toggleFavorite(countryName) {
+
+  if (favorites.includes(countryName)) {
+    favorites = favorites.filter(function (name) {
+      return name !== countryName;
+    });
+  } else {
+    favorites.push(countryName);
+  }
+
+  localStorage.setItem("favoriteCountries", JSON.stringify(favorites));
+
+  // Cards dobara banao
+  filterCountries();
+
+  // Detail page khula ho to usko bhi refresh karo
+  if (activeCountry !== "") {
+    const country = findCountry(activeCountry);
+
+    if (country) {
+      countryPageContent.innerHTML = detailsHTML(country);
+      attachPageFavoriteButton();
+    }
+  }
+}
+
+
+// ---------------------------------------------------------
+// 11. Country Detail Page
+// ---------------------------------------------------------
+
+function detailsHTML(country) {
+
+  const name = getCountryName(country);
+  const flag = getFlag(country);
+
+  // Flag ka HTML
+  let flagHTML = "";
+
+  if (flag !== "") {
+    flagHTML = `<img src="${flag}" alt="${name} flag" class="h-full w-full object-cover">`;
+  } else {
+    flagHTML = `<div class="flex h-full w-full items-center justify-center text-5xl">🌐</div>`;
+  }
+
+  // Basic Information cards
+  const infoList = [
+    { icon: "🏛️", label: "Capital", value: getCapital(country) },
+    { icon: "👥", label: "Population", value: getPopulation(country) },
+    { icon: "📐", label: "Area", value: getArea(country) },
+    { icon: "🗣️", label: "Languages", value: getLanguages(country) },
+    { icon: "💰", label: "Currency", value: getCurrencies(country) },
+    { icon: "🔠", label: "Country Code", value: country.alpha3Code || "Not Available" },
+  ];
+
+  let infoHTML = "";
+
+  for (let i = 0; i < infoList.length; i++) {
+    infoHTML += `
+      <div class="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+
+        <div class="flex items-center gap-2">
+          <span class="text-lg">${infoList[i].icon}</span>
+          <p class="text-xs font-semibold text-gray-400">${infoList[i].label}</p>
+        </div>
+
+        <p class="mt-2 break-words text-base font-bold text-gray-900">
+          ${infoList[i].value}
+        </p>
+
+      </div>
+    `;
+  }
+
+  // General Details rows
+  const generalList = [
+    { label: "Native Name", value: country.nativeName || "Not Available" },
+    { label: "Demonym", value: country.demonym || "Not Available" },
+    { label: "Calling Code", value: getCallingCode(country) },
+    { label: "Top Level Domain", value: getDomain(country) },
+  ];
+
+  let generalHTML = "";
+
+  for (let i = 0; i < generalList.length; i++) {
+    generalHTML += `
+      <div class="flex items-start justify-between gap-4 border-b border-gray-100 py-2.5 last:border-0">
+
+        <span class="shrink-0 text-sm text-gray-400">${generalList[i].label}</span>
+
+        <span class="text-right text-sm font-semibold text-gray-800">
+          ${generalList[i].value}
+        </span>
+
+      </div>
+    `;
+  }
+
+  // Geography rows
+  const geographyList = [
+    { label: "Subregion", value: country.subregion || "Not Available" },
+    { label: "Latitude", value: getLatitude(country) },
+    { label: "Longitude", value: getLongitude(country) },
+    { label: "Timezones", value: getTimezones(country) },
+  ];
+
+  let geographyHTML = "";
+
+  for (let i = 0; i < geographyList.length; i++) {
+    geographyHTML += `
+      <div class="flex items-start justify-between gap-4 border-b border-gray-100 py-2.5 last:border-0">
+
+        <span class="shrink-0 text-sm text-gray-400">${geographyList[i].label}</span>
+
+        <span class="text-right text-sm font-semibold text-gray-800">
+          ${geographyList[i].value}
+        </span>
+
+      </div>
+    `;
+  }
+
+  // Page ka favorite button
+  let favoriteClass = "bg-gray-900 text-white hover:bg-gray-800";
+  let favoriteText = "🤍 Add to Favorites";
+
+  if (favorites.includes(name)) {
+    favoriteClass = "bg-red-50 text-red-600 ring-1 ring-inset ring-red-200 hover:bg-red-100";
+    favoriteText = "❤️ Remove from Favorites";
+  }
+
+  return `
+    <!-- Banner -->
+    <div class="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm sm:p-7">
+
+      <div class="flex flex-col gap-5 sm:flex-row sm:items-center">
+
+        <div class="h-28 w-44 shrink-0 overflow-hidden rounded-2xl border border-gray-100 bg-gray-100">
+          ${flagHTML}
+        </div>
+
+        <div class="min-w-0">
+
+          <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-green-600">
+            Country Profile
+          </p>
+
+          <h1 class="mt-1 text-2xl font-extrabold leading-tight text-gray-900 sm:text-3xl">
+            ${name}
+          </h1>
+
+          <p class="mt-1 text-sm text-gray-400">
+            ${country.nativeName || "Not Available"}
+          </p>
+
+          <div class="mt-3 flex flex-wrap items-center gap-2">
+
+            <span class="rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
+              ${getRegion(country)}
+            </span>
+
+            <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-500">
+              ${country.subregion || "Not Available"}
+            </span>
+
+          </div>
+
+          <button
+            type="button"
+            class="page_favorite_btn mt-4 rounded-full px-5 py-2 text-sm font-semibold transition active:scale-95 ${favoriteClass}"
+          >
+            ${favoriteText}
+          </button>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Basic Information -->
+    <div class="mt-8">
+
+      <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-green-600">
+        Country Overview
+      </p>
+
+      <h2 class="mb-4 mt-1 text-xl font-extrabold text-gray-900">
+        Basic Information
+      </h2>
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        ${infoHTML}
+      </div>
+    </div>
+
+    <!-- General Details + Geography -->
+    <div class="mt-6 grid gap-5 lg:grid-cols-2">
+
+      <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <h3 class="mb-2 flex items-center gap-2 text-base font-bold text-gray-800">
+          ℹ️ General Details
+        </h3>
+        <div>${generalHTML}</div>
+      </div>
+
+      <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <h3 class="mb-2 flex items-center gap-2 text-base font-bold text-gray-800">
+          🌐 Geography
+        </h3>
+        <div>${geographyHTML}</div>
+      </div>
+
+    </div>
+  `;
+}
+
+// Detail page ke favorite button par click
+function attachPageFavoriteButton() {
+  const button = countryPageContent.querySelector(".page_favorite_btn");
+
+  if (!button) return;
+
+  button.addEventListener("click", function () {
+    toggleFavorite(activeCountry);
+  });
+}
+
+function showDetails(country) {
+  activeCountry = getCountryName(country);
+
+  countryPageContent.innerHTML = detailsHTML(country);
+  attachPageFavoriteButton();
+
+  // Scroll position yaad rakho
+  oldScroll = window.scrollY;
+
+  // Explore wala hissa chhupao, detail page dikhao
+  exploreSection.classList.add("hidden");
+  mainContent.classList.add("hidden");
+  footer.classList.add("hidden");
+  countryPage.classList.remove("hidden");
+
+  document.title = activeCountry + " — World Explorer";
+
+  window.scrollTo(0, 0);
+}
+
+function hideDetails() {
+  if (countryPage.classList.contains("hidden")) return;
+
+  activeCountry = "";
+
+  countryPage.classList.add("hidden");
+  exploreSection.classList.remove("hidden");
+  mainContent.classList.remove("hidden");
+  footer.classList.remove("hidden");
+
+  document.title = "World Explorer — Discover Every Country";
+
+  window.scrollTo(0, oldScroll);
+}
+
+
+// ---------------------------------------------------------
+// 12. Compare Countries
+// ---------------------------------------------------------
+
+function addToCompare(countryName) {
+
+  // Pehle se select hai to hata do
+  if (compareCountries.includes(countryName)) {
+    compareCountries = compareCountries.filter(function (name) {
+      return name !== countryName;
+    });
+
+    compareMessage = "";
+  } else if (compareCountries.length >= 2) {
+    // Do se zyada compare nahi kar sakte
+    compareMessage = "You can compare only 2 countries. Remove one first.";
+  } else {
+    compareCountries.push(countryName);
+    compareMessage = "";
+  }
+
+  filterCountries();
+}
+
+function displayCompare() {
+
+  // Kuch select nahi hai to placeholder
+  if (compareCountries.length === 0) {
     comparisonContainer.innerHTML = `
       <div class="rounded-2xl border-2 border-dashed border-gray-200 bg-white/60 p-8 text-center">
+
         <p class="mb-1 text-2xl">⚖️</p>
+
         <h2 class="text-base font-bold text-gray-700">Country Comparison</h2>
+
         <p class="mt-1 text-sm text-gray-400">
           Use the <span class="font-semibold text-violet-600">Compare</span> button on any two cards to see them side by side.
         </p>
+
       </div>
     `;
+
     return;
   }
 
-  // Selected countries ke remove chips
-  const chips = comparisonData
-    .map(
-      (country) => `
-        <button
-          type="button"
-          data-name="${escapeHtml(country.name)}"
-          class="remove-compare-btn inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-red-50 hover:text-red-600"
-        >
-          ${escapeHtml(country.name)}
-          <span aria-hidden="true">✕</span>
-        </button>
-      `
-    )
-    .join("");
+  // Selected countries ke chips
+  let chipsHTML = "";
+
+  for (let i = 0; i < compareCountries.length; i++) {
+    chipsHTML += `
+      <button
+        type="button"
+        data-name="${compareCountries[i]}"
+        class="remove_chip inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-red-50 hover:text-red-600"
+      >
+        ${compareCountries[i]}
+        <span>✕</span>
+      </button>
+    `;
+  }
 
   let bodyHTML = "";
 
-  if (comparisonData.length < 2) {
-    // Sirf ek country select hui hai
+  if (compareCountries.length < 2) {
+
     bodyHTML = `
       <p class="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700">
         Select one more country to compare.
@@ -669,58 +916,79 @@ function updateComparison() {
     `;
 
   } else {
-    const first = comparisonData[0];
-    const second = comparisonData[1];
 
-    // Zyada population wala green highlight hoga
-    const firstWins = first.rawPopulation > second.rawPopulation;
-    const secondWins = second.rawPopulation > first.rawPopulation;
+    const first = findCountry(compareCountries[0]);
+    const second = findCountry(compareCountries[1]);
+
+    // Zyada population wali country green highlight hogi
+    let firstWin = false;
+    let secondWin = false;
+
+    if (Number(first.population) > Number(second.population)) {
+      firstWin = true;
+    }
+
+    if (Number(second.population) > Number(first.population)) {
+      secondWin = true;
+    }
+
+    let firstPopulationClass = "text-gray-700";
+    let secondPopulationClass = "text-gray-700";
+
+    if (firstWin) {
+      firstPopulationClass = "bg-green-50 font-bold text-green-700";
+    }
+
+    if (secondWin) {
+      secondPopulationClass = "bg-green-50 font-bold text-green-700";
+    }
 
     bodyHTML = `
       <div class="overflow-x-auto">
+
         <table class="w-full border-collapse text-center text-sm">
+
           <thead>
             <tr class="bg-gray-50">
               <th class="w-1/4 border border-gray-200 px-3 py-2.5 text-left font-semibold text-gray-500">Details</th>
-              <th class="border border-gray-200 px-3 py-2.5 font-bold text-gray-800">${escapeHtml(first.name)}</th>
-              <th class="border border-gray-200 px-3 py-2.5 font-bold text-gray-800">${escapeHtml(second.name)}</th>
+              <th class="border border-gray-200 px-3 py-2.5 font-bold text-gray-800">${getCountryName(first)}</th>
+              <th class="border border-gray-200 px-3 py-2.5 font-bold text-gray-800">${getCountryName(second)}</th>
             </tr>
           </thead>
 
           <tbody>
+
             <tr>
               <td class="border border-gray-200 px-3 py-2.5 text-left font-medium text-gray-500">Flag</td>
               <td class="border border-gray-200 px-3 py-2.5">
-                <img src="${escapeHtml(first.flag)}" alt="" class="mx-auto h-12 w-20 rounded object-cover">
+                <img src="${getFlag(first)}" alt="" class="mx-auto h-12 w-20 rounded object-cover">
               </td>
               <td class="border border-gray-200 px-3 py-2.5">
-                <img src="${escapeHtml(second.flag)}" alt="" class="mx-auto h-12 w-20 rounded object-cover">
+                <img src="${getFlag(second)}" alt="" class="mx-auto h-12 w-20 rounded object-cover">
               </td>
             </tr>
 
             <tr>
               <td class="border border-gray-200 px-3 py-2.5 text-left font-medium text-gray-500">Capital</td>
-              <td class="border border-gray-200 px-3 py-2.5 text-gray-700">${escapeHtml(first.capital)}</td>
-              <td class="border border-gray-200 px-3 py-2.5 text-gray-700">${escapeHtml(second.capital)}</td>
+              <td class="border border-gray-200 px-3 py-2.5 text-gray-700">${getCapital(first)}</td>
+              <td class="border border-gray-200 px-3 py-2.5 text-gray-700">${getCapital(second)}</td>
             </tr>
 
             <tr>
               <td class="border border-gray-200 px-3 py-2.5 text-left font-medium text-gray-500">Region</td>
-              <td class="border border-gray-200 px-3 py-2.5 text-gray-700">${escapeHtml(first.region)}</td>
-              <td class="border border-gray-200 px-3 py-2.5 text-gray-700">${escapeHtml(second.region)}</td>
+              <td class="border border-gray-200 px-3 py-2.5 text-gray-700">${getRegion(first)}</td>
+              <td class="border border-gray-200 px-3 py-2.5 text-gray-700">${getRegion(second)}</td>
             </tr>
 
             <tr>
               <td class="border border-gray-200 px-3 py-2.5 text-left font-medium text-gray-500">Population</td>
-              <td class="border border-gray-200 px-3 py-2.5 ${firstWins ? "bg-green-50 font-bold text-green-700" : "text-gray-700"}">
-                ${escapeHtml(first.population)}
-              </td>
-              <td class="border border-gray-200 px-3 py-2.5 ${secondWins ? "bg-green-50 font-bold text-green-700" : "text-gray-700"}">
-                ${escapeHtml(second.population)}
-              </td>
+              <td class="border border-gray-200 px-3 py-2.5 ${firstPopulationClass}">${getPopulation(first)}</td>
+              <td class="border border-gray-200 px-3 py-2.5 ${secondPopulationClass}">${getPopulation(second)}</td>
             </tr>
+
           </tbody>
         </table>
+
       </div>
     `;
   }
@@ -729,174 +997,69 @@ function updateComparison() {
     <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
 
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 class="flex items-center gap-2 text-lg font-bold text-gray-800">⚖️ Country Comparison</h2>
+
+        <h2 class="flex items-center gap-2 text-lg font-bold text-gray-800">
+          ⚖️ Country Comparison
+        </h2>
 
         <button
           type="button"
-          id="clearCompareBtn"
+          id="clearCompare"
           class="rounded-full px-3 py-1.5 text-sm font-medium text-gray-500 transition hover:bg-gray-100 hover:text-red-600"
         >
           Clear all
         </button>
+
       </div>
 
-      <div class="mb-4 flex flex-wrap gap-2">${chips}</div>
+      <div class="mb-4 flex flex-wrap gap-2">${chipsHTML}</div>
 
-      ${
-        compareMessage
-          ? `<p class="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600">${escapeHtml(compareMessage)}</p>`
-          : ""
-      }
+      ${compareMessage ? `<p class="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600">${compareMessage}</p>` : ""}
 
       ${bodyHTML}
     </div>
   `;
+
+  // Chip hatane wale buttons
+  const removeButtons = comparisonContainer.querySelectorAll(".remove_chip");
+
+  removeButtons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      addToCompare(button.dataset.name);
+    });
+  });
+
+  // Clear all button
+  const clearCompareBtn = comparisonContainer.querySelector("#clearCompare");
+
+  if (clearCompareBtn) {
+    clearCompareBtn.addEventListener("click", function () {
+      compareCountries = [];
+      compareMessage = "";
+      filterCountries();
+    });
+  }
 }
 
 
-// 31. Comparison Box ke Buttons
-
-comparisonContainer.addEventListener("click", (event) => {
-  const removeBtn = event.target.closest(".remove-compare-btn");
-
-  if (removeBtn) {
-    toggleCompare(removeBtn.dataset.name);
-    return;
-  }
-
-  if (event.target.closest("#clearCompareBtn")) {
-    selectedCountries = [];
-    compareMessage = "";
-    applyFilters();
-  }
-});
-
-
-// 32. Search Debounce
-// Har key stroke par 250 countries filter karne ki zaroorat nahi —
-// 250ms ruk kar chalate hain.
-
-let searchTimer = null;
-
-function scheduleSearch() {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => applyFilters(true), 250);
-}
-
-// Search box mein type karte hi (debounced) search
-searchInput.addEventListener("input", scheduleSearch);
-
-// Region pills — click hote hi us region ki countries dikhao
-regionPills.addEventListener("click", (event) => {
-  const button = event.target.closest(".region-btn");
-
-  if (!button) return;
-
-  activeRegion = button.dataset.region || "all";
-
-  paintRegionPills();
-  applyFilters(true);
-});
-
-// Sorting dropdown
-sortFilter.addEventListener("change", () => applyFilters(true));
-
-// Favorites dropdown
-favoritesFilter.addEventListener("change", () => applyFilters(true));
-
-// Pehli baar active pill sahi dikhe
-paintRegionPills();
-
-
-// 33. Country Card Buttons Handle Karna
-// Event Delegation: parent container par ek listener,
-// saare buttons usi se handle ho jaate hain.
-
-container.addEventListener("click", (event) => {
-  const button = event.target.closest("button");
-
-  if (!button) return;
-
-  // Pagination
-  if (button.id === "loadMoreBtn") {
-    visibleCount += PAGE_SIZE;
-    renderCards(filteredCountries.slice(0, visibleCount));
-    return;
-  }
-
-  // Empty state ka reset button
-  if (button.id === "resetFiltersBtn") {
-    searchInput.value = "";
-    favoritesFilter.value = "all";
-    sortFilter.value = "default";
-    activeRegion = "all";
-    paintRegionPills();
-    applyFilters(true);
-    return;
-  }
-
-  // Favorite button click hua
-  if (button.classList.contains("favorite-btn")) {
-    toggleFavorite(button.dataset.name);
-
-  // Details button click hua
-  } else if (button.classList.contains("details-btn")) {
-    openDetails(button.dataset.name);
-
-  // Compare button click hua
-  } else if (button.classList.contains("compare-btn")) {
-    toggleCompare(button.dataset.name);
-  }
-});
-
-
-// 34. Loading Skeleton
-// API ka jawab aane tak grey pulsing cards dikhte hain.
-
-function skeletonHTML() {
-  return Array.from({ length: 8 })
-    .map(
-      () => `<div class="h-72 animate-pulse rounded-2xl bg-gray-200/80"></div>`
-    )
-    .join("");
-}
-
-
-// 35. "Show more" Button
-// Sirf PAGE_SIZE cards ek baar mein dikhte hain, baaki isse aate hain.
-
-function loadMoreHTML(total, shown) {
-  if (shown >= total) return "";
-
-  const remaining = total - shown;
-  const nextBatch = Math.min(PAGE_SIZE, remaining);
-
-  return `
-    <div class="col-span-full flex flex-col items-center gap-2 pt-2">
-      <button
-        type="button"
-        id="loadMoreBtn"
-        class="rounded-full bg-green-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 active:scale-95"
-      >
-        Show ${nextBatch} more
-      </button>
-      <p class="text-xs text-gray-400">${remaining} countries left</p>
-    </div>
-  `;
-}
-
-
-// 36. API Error Dikhana
-// Internet na ho ya API fail ho to user ko Retry ka option milta hai.
+// ---------------------------------------------------------
+// 13. API Error Dikhana
+// ---------------------------------------------------------
 
 function showError() {
-  container.innerHTML = `
+  countryContainer.innerHTML = `
     <div class="col-span-full flex flex-col items-center gap-3 py-16 text-center">
+
       <span class="text-4xl">⚠️</span>
-      <p class="text-base font-semibold text-gray-600">Unable to load countries</p>
+
+      <p class="text-base font-semibold text-gray-600">
+        Unable to load countries
+      </p>
+
       <p class="max-w-sm text-sm text-gray-400">
         Check your internet connection and try again.
       </p>
+
       <button
         type="button"
         id="retryBtn"
@@ -904,90 +1067,186 @@ function showError() {
       >
         Retry
       </button>
+
     </div>
   `;
 
-  // Retry click hone par API dobara call karna
-  const retryBtn = container.querySelector("#retryBtn");
+  const retryBtn = document.querySelector("#retryBtn");
 
-  if (retryBtn) {
-    retryBtn.addEventListener("click", fetchCountries);
-  }
+  retryBtn.addEventListener("click", function () {
+    loadCountries();
+  });
 }
 
 
-// 37. API se Countries ka Data Lana
-// async ka matlab function asynchronous kaam karega.
-// await API response ka wait karega.
+// ---------------------------------------------------------
+// 14. API se Countries ka Data Lana
+// ---------------------------------------------------------
 
-async function fetchCountries() {
-  // API load hone tak loading skeleton dikhana
-  container.innerHTML = skeletonHTML();
+async function loadCountries() {
+  showSkeleton();
 
-  // API request mein error aaye to catch handle karega
   try {
     const response = await fetch(API_URL);
 
-    // Check karna response successful hai ya nahi
     if (!response.ok) {
-      throw new Error("Failed to fetch countries");
+      throw new Error("API request failed: " + response.status);
     }
 
     const data = await response.json();
 
-    // API data ko apne required format mein convert karna
-    allCountries = data.map((country) => {
-      const rawPopulation = Number(country.population) || 0;
+    countries = data;
 
-      return {
-        name: String(country.name ?? "Unknown"),
+    if (!Array.isArray(countries)) {
+      throw new Error("Countries data array nahi mila.");
+    }
 
-        // Capital missing ho to N/A (Antarctica jaise cases)
-        capital: country.capital || "N/A",
-
-        region: normalizeRegion(country.region),
-
-        // Card ke liye halka PNG flag
-        flag: country.flags?.png || country.flags?.svg || "",
-
-        // Popup ke liye sharper SVG flag
-        flagLarge: country.flags?.svg || country.flags?.png || "",
-
-        population: formatPopulation(rawPopulation),
-
-        // Sorting ke liye original numeric population
-        rawPopulation,
-      };
+    // Shuru me A-Z order
+    countries.sort(function (a, b) {
+      return getCountryName(a).localeCompare(getCountryName(b));
     });
 
-    // Countries ko initially A-Z order mein arrange karna
-    allCountries.sort((a, b) => a.name.localeCompare(b.name));
-
-    applyFilters(true);
+    filterCountries();
 
   } catch (error) {
-    // Developer ke liye console mein actual error
-    console.error("Error loading countries:", error);
-
-    // User ko friendly error message
+    console.error("Error:", error);
     showError();
   }
 }
 
 
-// 38. Nav ke "Favorites" link
-// Click karne par list apne aap "Favorites Only" mode mein aa jati hai
-// (jaise dropdown se All Countries ko Favorites Only karte hain).
+// ---------------------------------------------------------
+// 15. Events (Search, Filter, Sort, Nav)
+// ---------------------------------------------------------
 
-document.querySelectorAll("[data-show-favorites]").forEach((link) => {
-  link.addEventListener("click", () => {
-    favoritesFilter.value = "favorites";
-    applyFilters(true);
+// Search button
+searchBtn.addEventListener("click", function () {
+  filterCountries();
+});
+
+// Search box me Enter
+searchInput.addEventListener("keyup", function (event) {
+  if (event.key === "Enter") {
+    filterCountries();
+  }
+});
+
+// Region pills
+const regionButtons = regionPills.querySelectorAll(".region-btn");
+
+regionButtons.forEach(function (button) {
+  button.addEventListener("click", function () {
+    selectedRegion = button.dataset.region;
+    paintRegionPills();
+    filterCountries();
   });
 });
 
+// Sort dropdown
+sortFilter.addEventListener("change", function () {
+  filterCountries();
+});
 
-// 39. Project Initialize Karna
-// JavaScript load hote hi API se countries fetch karo.
+// Favorites dropdown
+favoritesFilter.addEventListener("change", function () {
 
-fetchCountries();
+  // Dropdown badla to nav ka highlight bhi saath badle
+  if (favoritesFilter.value === "favorites") {
+    activeNav = "favorites";
+  } else {
+    activeNav = "explore";
+  }
+
+  paintNav();
+  filterCountries();
+});
+
+// Explore tab - saari countries dikhao aur favorites filter hata do
+function showExploreList() {
+  activeNav = "explore";
+  favoritesFilter.value = "all";
+  paintNav();
+  filterCountries();
+}
+
+// Favorites tab - sirf favorites dikhao
+function showFavoritesList() {
+  activeNav = "favorites";
+  favoritesFilter.value = "favorites";
+  paintNav();
+  filterCountries();
+}
+
+// Mobile menu ko band karo
+function closeMobileMenu() {
+  mobileMenu.classList.add("hidden");
+  mobileMenu.classList.remove("flex");
+  mobileMenuBtn.setAttribute("aria-expanded", "false");
+}
+
+// Nav ke "Explore" link
+const exploreLinks = document.querySelectorAll("[data-show-explore]");
+
+exploreLinks.forEach(function (link) {
+  link.addEventListener("click", function () {
+    showExploreList();
+    closeMobileMenu();
+  });
+});
+
+// Nav ke "Favorites" link
+const favoriteLinks = document.querySelectorAll("[data-show-favorites]");
+
+favoriteLinks.forEach(function (link) {
+  link.addEventListener("click", function () {
+    showFavoritesList();
+    closeMobileMenu();
+  });
+});
+
+// Mobile menu ke baaki links (Compare / About) bhi menu band karein
+mobileMenu.querySelectorAll("a").forEach(function (link) {
+  link.addEventListener("click", function () {
+    closeMobileMenu();
+  });
+});
+
+// Detail page khula ho to header / footer ke link se wapas explore
+const navLinks = document.querySelectorAll("header a, footer a");
+
+navLinks.forEach(function (link) {
+  link.addEventListener("click", function () {
+    hideDetails();
+  });
+});
+
+// Back to Explore button
+backToExploreBtn.addEventListener("click", function () {
+  hideDetails();
+});
+
+// Mobile menu
+mobileMenuBtn.addEventListener("click", function () {
+  mobileMenu.classList.toggle("hidden");
+  mobileMenu.classList.toggle("flex");
+
+  if (mobileMenu.classList.contains("hidden")) {
+    mobileMenuBtn.setAttribute("aria-expanded", "false");
+  } else {
+    mobileMenuBtn.setAttribute("aria-expanded", "true");
+  }
+});
+
+// Footer ka year
+if (yearEl) {
+  yearEl.textContent = new Date().getFullYear();
+}
+
+
+// ---------------------------------------------------------
+// 16. Project Start
+// ---------------------------------------------------------
+
+paintRegionPills();
+paintNav();
+loadCountries();

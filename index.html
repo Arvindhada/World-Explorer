@@ -46,10 +46,10 @@
 
         <!-- Navigation -->
         <nav class="hidden md:flex items-center gap-8">
-          <a href="#explore" class="flex items-center gap-1.5 text-green-700 font-semibold text-sm border-b-2 border-green-600 pb-0.5">
+          <a href="#explore" data-nav="explore" data-show-explore class="flex items-center gap-1.5 text-green-700 font-semibold text-sm border-b-2 border-green-600 pb-0.5">
              <span>Explore</span>
           </a>
-          <a href="#favorites-section" data-show-favorites class="flex items-center gap-1.5 text-gray-500 hover:text-green-600 text-sm font-medium transition">
+          <a href="#favorites-section" data-nav="favorites" data-show-favorites class="flex items-center gap-1.5 text-gray-500 hover:text-green-600 text-sm font-medium transition">
              <span>Favorites</span>
           </a>
           <a href="#comparisonContainer" class="flex items-center gap-1.5 text-gray-500 hover:text-green-600 text-sm font-medium transition">
@@ -78,8 +78,8 @@
 
       <!-- Mobile Nav (hidden by default) -->
       <nav id="mobileMenu" aria-label="Mobile navigation" class="hidden flex-col gap-3 border-t border-gray-100 pb-4 pt-3 md:hidden">
-        <a href="#explore" class="text-green-700 font-semibold text-sm"> Explore</a>
-        <a href="#favorites-section" data-show-favorites class="text-gray-500 text-sm"> Favorites</a>
+        <a href="#explore" data-nav="explore" data-show-explore class="text-green-700 font-semibold text-sm"> Explore</a>
+        <a href="#favorites-section" data-nav="favorites" data-show-favorites class="text-gray-500 text-sm"> Favorites</a>
         <a href="#comparisonContainer" class="text-gray-500 text-sm"> Compare</a>
         <a href="#footer" class="text-gray-500 text-sm"> About</a>
       </nav>
@@ -147,17 +147,13 @@
 
 
   <!-- ========== MAIN CONTENT ========== -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <main id="mainContent" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
-    <!-- Stats + Sort Bar -->
-    <div id="favorites-section" class="flex scroll-mt-24 flex-wrap items-center justify-between gap-4 mb-6">
+    <!-- Heading + Sort Bar -->
+    <div id="favorites-section" class="flex scroll-mt-24 flex-wrap items-center justify-between gap-4 mb-5">
       <div>
         <h2 id="listHeading" class="text-lg font-bold text-gray-800 flex items-center gap-2">🌍 Popular Countries</h2>
-        <p class="text-sm text-gray-500 mt-0.5" aria-live="polite">
-          Showing <span id="showingCountries" class="font-semibold text-green-600">0</span> of
-          <span id="totalCountries" class="font-semibold text-gray-700">0</span> countries
-          • <span id="favoriteCount" class="font-semibold text-red-500">0</span> favorites
-        </p>
+        <p class="text-sm text-gray-500 mt-0.5">Browse, filter and save the countries you love</p>
       </div>
 
       <div class="flex flex-wrap gap-2.5">
@@ -176,6 +172,37 @@
       </div>
     </div>
 
+    <!-- Stats Cards: Shown • Total • Favorites -->
+    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+
+      <!-- Countries currently on screen -->
+      <div class="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-green-200 hover:shadow-md">
+        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-50 text-2xl" aria-hidden="true">🌍</span>
+        <div class="min-w-0">
+          <p id="showingCountries" aria-live="polite" class="text-2xl font-extrabold leading-none text-green-600">0</p>
+          <p class="mt-1 truncate text-xs font-medium text-gray-400">Countries Shown</p>
+        </div>
+      </div>
+
+      <!-- All countries loaded from the API -->
+      <div class="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-sky-200 hover:shadow-md">
+        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-2xl" aria-hidden="true">📚</span>
+        <div class="min-w-0">
+          <p id="totalCountries" class="text-2xl font-extrabold leading-none text-sky-600">0</p>
+          <p class="mt-1 truncate text-xs font-medium text-gray-400">Total Countries</p>
+        </div>
+      </div>
+
+      <!-- Saved favorites -->
+      <div class="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-red-200 hover:shadow-md">
+        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50 text-2xl" aria-hidden="true">❤️</span>
+        <div class="min-w-0">
+          <p id="favoriteCount" class="text-2xl font-extrabold leading-none text-red-500">0</p>
+          <p class="mt-1 truncate text-xs font-medium text-gray-400">Favorites</p>
+        </div>
+      </div>
+    </div>
+
     <!-- Country Cards Grid -->
     <div id="countryContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
       <p class="text-center text-gray-400 col-span-full py-16 text-sm">Countries will appear here...</p>
@@ -186,26 +213,24 @@
   </main>
 
 
-  <!-- ========== COUNTRY DETAIL MODAL ========== -->
-  <div
-    id="countryModal"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="modalTitle"
-    class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-  >
-    <div class="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white shadow-2xl">
+  <!-- ========== COUNTRY DETAIL PAGE ========== -->
+  <!-- Ye poora page tab dikhta hai jab "View Details" click hota hai -->
+  <section id="countryPage" class="hidden px-4 sm:px-6 lg:px-8 py-6">
+    <div class="mx-auto max-w-6xl">
+
+      <!-- Wapas explore par jane ka button -->
       <button
-        id="closeModal"
+        id="backToExploreBtn"
         type="button"
-        aria-label="Close country details"
-        class="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-xl leading-none text-gray-500 shadow-sm transition hover:bg-gray-100 hover:text-gray-800"
+        class="mb-5 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-600 shadow-sm transition hover:border-green-300 hover:text-green-700 active:scale-95"
       >
-        &times;
+        ← Back to Explore
       </button>
-      <div id="modalDetails"></div>
+
+      <!-- Saara detail JavaScript se yahan bharta hai -->
+      <div id="countryPageContent"></div>
     </div>
-  </div>
+  </section>
 
 
   <!-- ========== FOOTER ========== -->
